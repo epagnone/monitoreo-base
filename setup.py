@@ -22,7 +22,7 @@ setup(
     name=PACKAGE_NAME,
     version=VERSION,
     description=DESCRIPTION,
-    long_description=LONG_DESCRIPTION,
+    # long_description=LONG_DESCRIPTION,
     long_description_content_type=LONG_DESC_TYPE,
     author=AUTHOR,
     author_email=AUTHOR_EMAIL,

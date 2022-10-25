@@ -5,9 +5,9 @@ HERE = pathlib.Path(__file__).parent
 
 VERSION = '0.0.1' #Version
 PACKAGE_NAME = 'monitoreo' #Debe coincidir con el nombre de la carpeta 
-AUTHOR = 'nombre' #Modificar 
-AUTHOR_EMAIL = 'mail' #Modificar 
-URL = 'https://github.com/xxx' #Modificar 
+AUTHOR = 'Eduardo Pagnone' #Modificar 
+AUTHOR_EMAIL = 'eduardopagnone@gmail.com' #Modificar 
+URL = 'https://github.com/epagnone/monitoreo-base' #Modificar 
 
 LICENSE = 'MIT' #Tipo de licencia
 DESCRIPTION = 'Descripcion' #Descripción corta

@@ -11,7 +11,7 @@ URL = 'https://github.com/epagnone/monitoreo-base' #Modificar
 
 LICENSE = 'MIT' #Tipo de licencia
 DESCRIPTION = 'Descripcion' #Descripción corta
-LONG_DESCRIPTION = (HERE/"README.md").read_text(encoding='utf-8') #Referencia al README 
+# LONG_DESCRIPTION = (HERE/"README.md").read_text(encoding='utf-8') #Referencia al README 
 LONG_DESC_TYPE = "text/markdown"
 
 

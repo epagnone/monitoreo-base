@@ -1,18 +1,28 @@
-#TODOs:
-    Documentación en confluence
-    Definir que salidas van a generar las funciones
-    Definir si se inserta o no en la tabla final.
-    Definir el join entre la abt y el target. Script de join com parámetro
-    Función de performance: Añadir un parámetro que tenga el query de join entre el target y el score.
-    Función de performance: Añadir más métricas de performance tales como precision, recall, f1-score. (No aplica ya no lo estamos guardando la predicción en las tablas 0/1)
-    Todas las funciones que levantan un baseline: Ajustarlas para que ordenen los bines correctamente.
-    Tener funciones adicionales que permitan la inserción a las tablas del monitoreo.
-    Funciones de vdi: Añadir como parámetro la cantidad de variables a monitorear (no mayor a 20)
-    Documentar la forma de usar confluence
-    Subir el link de esta notebook a confluence
-    Validar las funciones con el resto de DS
-    Todas las funciones: Quitar la sección de inserción a las tablas de monitoreo.
-    Aplicar el cambio de los vdis a los baselines
-    Retocar los docstrings
-    En la función performance cuando insertamos el BASELINE en el PSI indicar la cantidad de bines en tipo (10 o 20 bines)
-    Probar las funciones con otros modelos de DS
+# Monitoreos
+
+Este repositorio contiene el código para desarrollar las funciones de monitoreo tanto del _performance_ como de la estabilidad de los modelos de clasificación. 
+A su vez, tiene funciones que permiten insertar la salida de las funciones anteriormente mencionadas (_dataframes_ de _pyspark_) en las tablas de [monitoreo de modelos](https://docucio.telecom.com.ar/pages/viewpage.action?pageId=47908003) 
+Las funciones son las siguientes:
+
+## vdi
+Función que calcula el baseline de la distribución de las variables cuantitativas y cualitativas.
+        _Inputs_:
+        -------
+            - id: Nombre del campo que identifica el 'id' del modelo por ejemplo el campo 'linea' o el campo 'id_suscripcion'.
+            - fecha_foto: fecha en la que se requiere ver la distribución de las variables yyyymmdd.
+            - variables: lista de variables a monitorear. No más de 10 variables.
+            - abt_modelo: Nombre de la tabla donde se encuentra el id y el score del modelo.
+            - nombre_modelo: Nombre del modelo a monitorear el performance.
+            - tipo_variables: Indica si el grupo de variables es cualitativa o cuantitativa. Por defecto 'CUALITATIVAS'.
+            - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
+        _Outputs_:
+        -------
+            - df_vdi_bl: Dataframe con la distribución baseline de las variables
+
+## insert_vdi
+Función que inseta en hadoop la tabla del baseline de vdi.
+        _Inputs_:
+        -------
+            - df_vdi_bl: Dataframe de spark a insertar en hadoop.
+            - tipo_variables: Indica si el grupo de variables es cualitativa o cuantitativa. Por defecto 'CUALITATIVAS'.
+            - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.

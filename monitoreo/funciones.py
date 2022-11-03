@@ -397,8 +397,8 @@ class funciones:
             - df_psi: Dataframe que tiene el baseline del psi (si se ejecuta el BASELINE). Por defecto 0.
             - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
             - tipo: Indica si el dataset generado corresponde al periodo de BASELINE o algun otro periodo (performance). Por defecto es 'PERFORMANCE'. 
-        """
         
+        """
         # Seteamos a nonstrict el partition mode
         result = sqlContext.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
         

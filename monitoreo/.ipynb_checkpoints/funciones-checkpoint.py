@@ -397,8 +397,8 @@ class funciones:
             - df_psi: Dataframe que tiene el baseline del psi (si se ejecuta el BASELINE). Por defecto 0.
             - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
             - tipo: Indica si el dataset generado corresponde al periodo de BASELINE o algun otro periodo (performance). Por defecto es 'PERFORMANCE'. 
-        """
         
+        """
         # Seteamos a nonstrict el partition mode
         result = sqlContext.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
         
@@ -414,22 +414,132 @@ class funciones:
             print(f'Insertamos {df_res_bines.count()} registros en la tabla indicadores_bines, {df_res_metricas.count()} en la tabla indicadores_performance y {df_psi.count()} en la tabla indicadores_psi_bl')
         else:
             print(f'Insertamos {df_res_bines.count()} registros en la tabla indicadores_bines, {df_res_metricas.count()} en la tabla indicadores_performance.')
-            
+   
+
+    @staticmethod
+    def psi(id, score, fecha_foto, abt_modelo, nombre_modelo, ambiente = 'sdb_datamining'):
+        """
+    Función que calcula el psi (Population Stability Index) para los modelos de clasificación.
+    E inserta en la tabla de psi el calculo del contribution_to_index por bin (el psi es la suma de contribution_to_index)
+    
+    Inputs:
+    -------
+        - id: Nombre del campo que identifica el 'id' del modelo por ejemplo el campo 'linea' o el campo 'id_suscripcion'.
+        - score: Nombre del campo que identifica el 'score' del modelo por ejemplo el campo 'score_capro'. 
+        - fecha_foto: Fecha en la que se requiere verificar la estabilidad de la población scoreada. Está en formato yyyymmdd.
+        - abt_modelo: Nombre de la tabla donde se encuentra el id y el score del modelo a monitorear la estabilidad.
+        - nombre_modelo: Nombre del modelo a monitorear la estabilidad.
+        - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto sdb_datamining
+    
+    Outputs:
+    -------
+        - df_ind_PSI: Dataframe con el calculo de contribution_to_index por bin.
+    
+        """
+        # Importamos librerías
+        import pandas as pd
+        import numpy as np
+        from datetime import date, datetime
+
+        # Calculamos el periodo en base a la fecha de la foto de los datos
+        fecha_foto_dt = datetime.strptime(fecha_foto, '%Y%m%d')
+        periodo = int(fecha_foto_dt.strftime('%Y%m'))
+
+        # Cargamos el periodo actual y lo pasamos a pandas
+        query =f"""
+        select {id} as id ,{score} as score from {ambiente}.{abt_modelo} where periodo={periodo}
+        """
+        df_bin_ = sqlContext.sql(query)
+        df_bin = df_bin_.toPandas()
+
+        # Cargamos el último baseline y lo pasamos a pandas
+        query=f"""
+        select fecha, bin, max_p_target, totales as baseline_counts 
+        from {ambiente}.indicadores_psi_bl
+        where modelo='{nombre_modelo}'
+        and fecha = (select max(fecha) from {ambiente}.indicadores_psi_bl where  modelo='{nombre_modelo}') 
+        order by bin
+        """
+        df_baseline_psi_= sqlContext.sql(query)
+        df_baseline_psi = df_baseline_psi_.toPandas()
+        # Ordenamos los puntos de corte
+        df_baseline_psi = df_baseline_psi.sort_values(by='max_p_target')
+
+        # Capturamos los puntos de corte
+        cut_bin=df_baseline_psi['max_p_target'].tolist()
+        cut_bin.insert(0, 0)
+        # Asignamos el 1 como la máxima probabilidad posible
+        cut_bin[-1] = 1
+
+        # Joineamos baseline con el periodo actual. Calculo del PSI
+
+        ## Definimos percentiles en base a los puntos de corte del baseline
+        df_bin['percentil']=pd.cut(df_bin['score'] , bins=cut_bin, duplicates='drop')
+
+        ## Ordenemos la tabla y definimos los bines
+        df_bin=df_bin.sort_values(by=['percentil'])
+        bines= pd.DataFrame({'percentil':df_bin.percentil.unique()})
+        bines['Bin'] = bines.index
+
+        ## Añadimos el campo de bines
+        df_bin=pd.merge(df_bin, bines, how='left', on=['percentil', 'percentil'])
+        df_bin=df_bin[['id', 'score', 'percentil', 'Bin']]
+
+        ## Calculamos totales y el maximo score por bin
+        df_res = df_bin.groupby('Bin').agg({'id':'count','score': 'max'}).reset_index()
+        df_res.rename(columns = {'id':'validation_counts','score': 'max_score'}, inplace = True)
+
+        ## Nos quedamos con las columnas necesarias para el baseline
+        df_baseline_psi=df_baseline_psi[['max_p_target', 'baseline_counts']]
+
+        ## Joineamos el baseline y periodo actual
+        df_ind_PSI = pd.concat([df_baseline_psi, df_res], axis = 1, join="inner")
+
+        # Calculamos el PSI
+
+        baseline_counts_total= df_ind_PSI['baseline_counts'].sum()
+        validation_counts_total = df_ind_PSI['validation_counts'].sum()
+        df_ind_PSI['baseline_porc'] = df_ind_PSI['baseline_counts'] / baseline_counts_total
+        df_ind_PSI['validation_porc'] = df_ind_PSI['validation_counts'] / validation_counts_total
+        df_ind_PSI['difference'] = df_ind_PSI['baseline_porc'] - df_ind_PSI['validation_porc']
+        df_ind_PSI['ratio'] = df_ind_PSI['baseline_porc'] / df_ind_PSI['validation_porc']
+        df_ind_PSI['weight_of_evidence'] = np.log(df_ind_PSI['ratio']) 
+        df_ind_PSI['contribution_to_index'] = df_ind_PSI['difference'] * df_ind_PSI['weight_of_evidence']
+
+        # Añadimos campos para el dashboard de monitoreo
+        # Seteamos campos complementarios necesarios para el dashboard
+        df_ind_PSI['fecha'] = fecha_foto
+        df_ind_PSI['anio'] = pd.DatetimeIndex(df_ind_PSI['fecha']).year
+        df_ind_PSI['mes'] = pd.DatetimeIndex(df_ind_PSI['fecha']).month
+        df_ind_PSI['dia'] = pd.DatetimeIndex(df_ind_PSI['fecha']).day
+        df_ind_PSI['modelo'] = nombre_modelo
+
+        # Ordenamos los campos
+        df_ind_PSI=df_ind_PSI[['anio','mes','dia', 'Bin',
+                                 'baseline_counts', 'baseline_porc', 'validation_counts', 'validation_porc',
+                                 'difference', 'ratio', 'weight_of_evidence', 'contribution_to_index','fecha', 'modelo']]
+
+        # Transformamos a spark
+        df_ind_PSI_move =spark.createDataFrame(df_ind_PSI)
+
+
+        return df_ind_PSI_move
+
     @staticmethod
     def insert_psi(df_psi, ambiente='sdb_datamining'):
-        """Función que inserta en hadoop la tabla del baseline de vdi
-        Inputs:
-        -------
-            - df_psi: Dataframe que tiene el psi del modelo
-            - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
-        """
-        
+         """Función que inserta en hadoop la tabla del baseline de vdi
+            Inputs:
+            -------
+                - df_psi: Dataframe que tiene el psi del modelo
+                - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
+            """
+
         # Seteamos a nonstrict el partition mode
         result = sqlContext.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
-        
+
         # Insertamos la tabla de psi 
         df_psi.write.mode("overwrite").insertInto(f"{ambiente}.indicadores_psi",overwrite=True)
-        
+
         print(f'Insertamos {df_psi.count()} registros en la tabla indicadores_psi.')
         
         

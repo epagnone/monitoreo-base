@@ -6,6 +6,7 @@ Las funciones son las siguientes:
 
 ## vdi
 Función que calcula el baseline de la distribución de las variables cuantitativas y cualitativas.
+
         _Inputs_:
         -------
             - id: Nombre del campo que identifica el 'id' del modelo por ejemplo el campo 'linea' o el campo 'id_suscripcion'.
@@ -15,12 +16,14 @@ Función que calcula el baseline de la distribución de las variables cuantitati
             - nombre_modelo: Nombre del modelo a monitorear el performance.
             - tipo_variables: Indica si el grupo de variables es cualitativa o cuantitativa. Por defecto 'CUALITATIVAS'.
             - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
+            
         _Outputs_:
         -------
             - df_vdi_bl: Dataframe con la distribución baseline de las variables
 
 ## insert_vdi
 Función que inseta en hadoop la tabla del baseline de vdi.
+
         _Inputs_:
         -------
             - df_vdi_bl: Dataframe de spark a insertar en hadoop.

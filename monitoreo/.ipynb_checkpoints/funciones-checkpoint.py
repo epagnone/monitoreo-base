@@ -499,6 +499,10 @@ class funciones:
 
         baseline_counts_total= df_ind_PSI['baseline_counts'].sum()
         validation_counts_total = df_ind_PSI['validation_counts'].sum()
+        
+        # Reemplazamos el 0 por el 1 en el 'validation_counts' para poder calcular el 'ratio' y el resto de métricas
+        df_ind_PSI['validation_counts'] = np.where(df_ind_PSI['validation_counts']== 0,1,df_ind_PSI['validation_counts'])
+    
         df_ind_PSI['baseline_porc'] = df_ind_PSI['baseline_counts'] / baseline_counts_total
         df_ind_PSI['validation_porc'] = df_ind_PSI['validation_counts'] / validation_counts_total
         df_ind_PSI['difference'] = df_ind_PSI['baseline_porc'] - df_ind_PSI['validation_porc']
@@ -656,6 +660,10 @@ class funciones:
         
             baseline_counts_total= df_temp['baseline_counts'].sum()
             validation_counts_total = df_temp['validation_counts'].sum()
+            
+            # Reemplazamos el 0 por el 1 en el 'validation_counts' para poder calcular el 'ratio' y el resto de métricas
+            df_temp['validation_counts'] = np.where(df_temp['validation_counts']== 0,1,df_temp['validation_counts'])
+        
         
             df_temp['baseline_porc'] = df_temp['baseline_counts'] / baseline_counts_total
             df_temp['validation_porc'] = df_temp['validation_counts'] / validation_counts_total
@@ -848,6 +856,9 @@ class funciones:
         
             baseline_counts_total= df_temp['baseline_counts'].sum()
             validation_counts_total = df_temp['validation_counts'].sum()
+        
+            # Reemplazamos el 0 por el 1 en el 'validation_counts' para poder calcular el 'ratio' y el resto de métricas
+            df_temp['validation_counts'] = np.where(df_temp['validation_counts']== 0,1,df_temp['validation_counts'])
         
             df_temp['baseline_porc'] = df_temp['baseline_counts'] / baseline_counts_total
             df_temp['validation_porc'] = df_temp['validation_counts'] / validation_counts_total

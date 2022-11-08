@@ -11,136 +11,136 @@ class funciones:
     
     @staticmethod
     def vdi(id, fecha_foto, variables, abt_modelo, nombre_modelo, tipo_variables='cualitativas', ambiente='sdb_datamining'):
-    """Función que calcula el baseline de la distribución de las variables cuantitativas y cualitativas.
-    
-    Inputs:
-    -------
-        - id: Nombre del campo que identifica el 'id' del modelo por ejemplo el campo 'linea' o el campo 'id_suscripcion'.
-        - fecha_foto: fecha en la que se requiere ver la distribución de las variables yyyymmdd.
-        - variables: lista de variables a monitorear. No más de 20 variables.
-        - abt_modelo: Nombre de la tabla donde se encuentra el id y el score del modelo.
-        - nombre_modelo: Nombre del modelo a monitorear el performance.
-        - tipo_variables: Indica si el grupo de variables es cualitativa o cuantitativa. Por defecto 'CUALITATIVAS'.
-        - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
-    
-    Outputs:
-    -------
-        - df_vdi_bl: Dataframe con la distribución baseline de las variables
-    
-    """
-    import pandas as pd
-    import numpy as np
-    from datetime import datetime
-    # Quitamos los mensajes de warning
-    import warnings
-    warnings.filterwarnings('ignore')
-    
-    # Validamos que se pasen como parámetro solamente 20 variables
-    assert len(variables)<=20, 'Debe insertar 20 variables como máximo'
-    
-    # Genemos el periodo de score
-    fecha_foto_dt = datetime.strptime(fecha_foto, '%Y%m%d')
-    periodo = int(fecha_foto_dt.strftime('%Y%m'))
+        """Función que calcula el baseline de la distribución de las variables cuantitativas y cualitativas.
 
-    # Creamos el query que levanta las n variables especificadas en 'variables' y lo pasamos a pandas
-    
-    query = f"""select {id}
-             """
-    for i in range(0, len(variables)):
+        Inputs:
+        -------
+            - id: Nombre del campo que identifica el 'id' del modelo por ejemplo el campo 'linea' o el campo 'id_suscripcion'.
+            - fecha_foto: fecha en la que se requiere ver la distribución de las variables yyyymmdd.
+            - variables: lista de variables a monitorear. No más de 20 variables.
+            - abt_modelo: Nombre de la tabla donde se encuentra el id y el score del modelo.
+            - nombre_modelo: Nombre del modelo a monitorear el performance.
+            - tipo_variables: Indica si el grupo de variables es cualitativa o cuantitativa. Por defecto 'CUALITATIVAS'.
+            - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
+
+        Outputs:
+        -------
+            - df_vdi_bl: Dataframe con la distribución baseline de las variables
+
+        """
+        import pandas as pd
+        import numpy as np
+        from datetime import datetime
+        # Quitamos los mensajes de warning
+        import warnings
+        warnings.filterwarnings('ignore')
+
+        # Validamos que se pasen como parámetro solamente 20 variables
+        assert len(variables)<=20, 'Debe insertar 20 variables como máximo'
+
+        # Genemos el periodo de score
+        fecha_foto_dt = datetime.strptime(fecha_foto, '%Y%m%d')
+        periodo = int(fecha_foto_dt.strftime('%Y%m'))
+
+        # Creamos el query que levanta las n variables especificadas en 'variables' y lo pasamos a pandas
+
+        query = f"""select {id}
+                 """
+        for i in range(0, len(variables)):
+            query += f"""
+            ,{variables[i]}"""
+            # Guardamos en un string las variables para levantar del baseline
+            if i ==0:
+                lista_variables = f"""'{variables[i]}'"""
+            else:
+                lista_variables += f""",'{variables[i]}'"""
+
         query += f"""
-        ,{variables[i]}"""
-        # Guardamos en un string las variables para levantar del baseline
-        if i ==0:
-            lista_variables = f"""'{variables[i]}'"""
-        else:
-            lista_variables += f""",'{variables[i]}'"""
-            
-    query += f"""
-        from {ambiente}.{abt_modelo} 
-        where periodo={periodo}"""
-        
-    df_baseline = spark.sql(query)
-    df_baseline=df_baseline.toPandas()
-    
-    # Generamos el baseline
-    ## Definimos dataframe que acumule los baseline de las variables
-    df_vdi_bl=pd.DataFrame()
-    
-    ## Cuantitativas
-    if tipo_variables.upper().strip() == 'CUANTITATIVAS':
+            from {ambiente}.{abt_modelo} 
+            where periodo={periodo}"""
 
-        for variable in variables:
-            
-            # Definimos 10 grupos en base a la distribución de la variable
-            sub = df_baseline[[variable]]
-            sub=sub.sort_values(by =[variable])
-            sub['rank']=pd.qcut(sub[variable], q=10,duplicates='drop')
-    
-            # Calculamos los totales, valor_maximo y valor_minimo en cada rango
-            count = sub.groupby(['rank'])[[variable]].count().rename(columns={variable:"totales"})
-            max_val= sub.groupby(['rank'])[[variable]].max().rename(columns={variable:"max_val"})
-            min_val= sub.groupby(['rank'])[[variable]].min().rename(columns={variable:"min_val"})
-            
-            # Joineamos cada unos de los valores
-            tmp_var=pd.merge(count, max_val,  on = 'rank')
-            tmp_var=pd.merge(tmp_var, min_val,  on = 'rank')
-            
-            # Añadimos el nombre de la variable por la que estamos iterando
-            tmp_var['var']=variable
-            
-            # Añadimos el número de bin
-            tmp_var=tmp_var.reset_index()
-            tmp_var['bin']= tmp_var.index.tolist()
-            
-            # Seleccionamos los campos
-            var = tmp_var[['var', 'bin', 'totales', 'min_val','max_val']]
-            
-            # Appendemos los baseline de cada variable
-            df_vdi_bl=df_vdi_bl.append(var)
+        df_baseline = spark.sql(query)
+        df_baseline=df_baseline.toPandas()
 
-        # Seteamos campos complementarios necesarios para tabla
-        df_vdi_bl['fecha_foto']=fecha_foto
-        df_vdi_bl['modelo']= nombre_modelo
-        df_vdi_bl['positivos']= 0
-        df_vdi_bl['min_p']= 0
-        df_vdi_bl['max_p']= 0
-        
-        df_vdi_bl=df_vdi_bl[['var', 'bin', 'totales', 'positivos','min_p', 'max_p','min_val','max_val', 'fecha_foto', 'modelo']]
+        # Generamos el baseline
+        ## Definimos dataframe que acumule los baseline de las variables
+        df_vdi_bl=pd.DataFrame()
 
-        # Transformamos a spark
-        df_vdi_bl =spark.createDataFrame(df_vdi_bl)
+        ## Cuantitativas
+        if tipo_variables.upper().strip() == 'CUANTITATIVAS':
 
-     ## Cualitativas
-    if tipo_variables.upper().strip() == 'CUALITATIVAS':
-        for variable in variables:
-            
-            # Calculamos los totales por cada categoría
-            sub = df_baseline[[variable]]
-            sub=sub.sort_values(by =[variable])
-            tmp_var = sub.groupby([variable])[[variable]].count().rename(columns={variable:"totales"})
-            
-            # Añadimos el nombre de la variable por la que estamos iterando
-            tmp_var['var']=variable
-            tmp_var['bin']= tmp_var.index.tolist()
-            tmp_var['bin'] = tmp_var['bin'].astype(str)
-            
-            # Seleccionamos los campos
-            var = tmp_var[['bin','var', 'totales']]
-            
-            # Appendemos los baseline de cada variable
-            df_vdi_bl=df_vdi_bl.append(var)
-            
-        # Seteamos campos complementarios necesarios para la tabla
-        df_vdi_bl['fecha_foto']=fecha_foto
-        df_vdi_bl['modelo']= nombre_modelo
-        df_vdi_bl['categoria']=df_vdi_bl['bin']
-        df_vdi_bl['bin']=0
-        df_vdi_bl=df_vdi_bl[['bin','var','totales','categoria', 'fecha_foto', 'modelo']]
-     
-        # Transformamos a spark
-        df_vdi_bl =spark.createDataFrame(df_vdi_bl)
+            for variable in variables:
 
-    return df_vdi_bl
+                # Definimos 10 grupos en base a la distribución de la variable
+                sub = df_baseline[[variable]]
+                sub=sub.sort_values(by =[variable])
+                sub['rank']=pd.qcut(sub[variable], q=10,duplicates='drop')
+
+                # Calculamos los totales, valor_maximo y valor_minimo en cada rango
+                count = sub.groupby(['rank'])[[variable]].count().rename(columns={variable:"totales"})
+                max_val= sub.groupby(['rank'])[[variable]].max().rename(columns={variable:"max_val"})
+                min_val= sub.groupby(['rank'])[[variable]].min().rename(columns={variable:"min_val"})
+
+                # Joineamos cada unos de los valores
+                tmp_var=pd.merge(count, max_val,  on = 'rank')
+                tmp_var=pd.merge(tmp_var, min_val,  on = 'rank')
+
+                # Añadimos el nombre de la variable por la que estamos iterando
+                tmp_var['var']=variable
+
+                # Añadimos el número de bin
+                tmp_var=tmp_var.reset_index()
+                tmp_var['bin']= tmp_var.index.tolist()
+
+                # Seleccionamos los campos
+                var = tmp_var[['var', 'bin', 'totales', 'min_val','max_val']]
+
+                # Appendemos los baseline de cada variable
+                df_vdi_bl=df_vdi_bl.append(var)
+
+            # Seteamos campos complementarios necesarios para tabla
+            df_vdi_bl['fecha_foto']=fecha_foto
+            df_vdi_bl['modelo']= nombre_modelo
+            df_vdi_bl['positivos']= 0
+            df_vdi_bl['min_p']= 0
+            df_vdi_bl['max_p']= 0
+
+            df_vdi_bl=df_vdi_bl[['var', 'bin', 'totales', 'positivos','min_p', 'max_p','min_val','max_val', 'fecha_foto', 'modelo']]
+
+            # Transformamos a spark
+            df_vdi_bl =spark.createDataFrame(df_vdi_bl)
+
+         ## Cualitativas
+        if tipo_variables.upper().strip() == 'CUALITATIVAS':
+            for variable in variables:
+
+                # Calculamos los totales por cada categoría
+                sub = df_baseline[[variable]]
+                sub=sub.sort_values(by =[variable])
+                tmp_var = sub.groupby([variable])[[variable]].count().rename(columns={variable:"totales"})
+
+                # Añadimos el nombre de la variable por la que estamos iterando
+                tmp_var['var']=variable
+                tmp_var['bin']= tmp_var.index.tolist()
+                tmp_var['bin'] = tmp_var['bin'].astype(str)
+
+                # Seleccionamos los campos
+                var = tmp_var[['bin','var', 'totales']]
+
+                # Appendemos los baseline de cada variable
+                df_vdi_bl=df_vdi_bl.append(var)
+
+            # Seteamos campos complementarios necesarios para la tabla
+            df_vdi_bl['fecha_foto']=fecha_foto
+            df_vdi_bl['modelo']= nombre_modelo
+            df_vdi_bl['categoria']=df_vdi_bl['bin']
+            df_vdi_bl['bin']=0
+            df_vdi_bl=df_vdi_bl[['bin','var','totales','categoria', 'fecha_foto', 'modelo']]
+
+            # Transformamos a spark
+            df_vdi_bl =spark.createDataFrame(df_vdi_bl)
+
+        return df_vdi_bl
     
     @staticmethod
     def insert_vdi(df_vdi_bl, tipo_variables='cualitativas', ambiente='sdb_datamining'):

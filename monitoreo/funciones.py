@@ -427,6 +427,7 @@ class funciones:
         import pandas as pd
         import numpy as np
         from datetime import date, datetime
+        from pyspark.shell import spark
 
         # Calculamos el periodo en base a la fecha de la foto de los datos
         fecha_foto_dt = datetime.strptime(fecha_foto, '%Y%m%d')

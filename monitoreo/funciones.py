@@ -10,7 +10,7 @@ class funciones:
         
     
     @staticmethod
-    def vdi(id, fecha_foto, variables, abt_modelo, nombre_modelo, tipo_variables='cualitativas', ambiente='sdb_datamining'):
+    def vdi_bl(id, fecha_foto, variables, abt_modelo, nombre_modelo, tipo_variables='cualitativas', ambiente='sdb_datamining'):
         """Función que calcula el baseline de la distribución de las variables cuantitativas y cualitativas.
 
         Inputs:
@@ -144,7 +144,7 @@ class funciones:
         return df_vdi_bl
     
     @staticmethod
-    def insert_vdi(df_vdi_bl, tipo_variables='cualitativas', ambiente='sdb_datamining'):
+    def insert_vdi_bl(df_vdi_bl, tipo_variables='cualitativas', ambiente='sdb_datamining'):
         """Función que inseta en hadoop la tabla del baseline de vdi
         Inputs:
         -------
@@ -152,16 +152,11 @@ class funciones:
             - tipo_variables: Indica si el grupo de variables es cualitativa o cuantitativa. Por defecto 'CUALITATIVAS'.
             - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
         """
-        # Levantamos la sesión de spark
-        from pyspark.sql import SparkSession, SQLContext
-
-        spark = SparkSession.builder.appName("Monitoring Functions").getOrCreate()
-        sc=spark.sparkContext
-        sqlContext = SQLContext(sc)
-
+        # Levantamos spark
+        from pyspark.shell import Spark
 
         # Seteamos a nonstrict el partition mode
-        result = sqlContext.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
+        result = spark.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
         flag = False
 
         if tipo_variables.lower() == 'cualitativas':
@@ -887,7 +882,7 @@ class funciones:
     
     @staticmethod
     def insert_vdi(df_vdi, ambiente='sdb_datamining'):
-        """Función que inserta en hadoop la tabla del baseline de vdi (aplica para cualitativas y cuantitativas)
+        """Función que inserta en hadoop la tabla del vdi (aplica para cualitativas y cuantitativas)
         Inputs:
         -------
             - df_vdi: Dataframe que tiene el el vdi de las variables cualitativas o cuantitativas del modelo.

@@ -153,7 +153,7 @@ class funciones:
             - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
         """
         # Levantamos spark
-        from pyspark.shell import Spark
+        from pyspark.shell import spark
 
         # Seteamos a nonstrict el partition mode
         result = spark.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")

@@ -31,6 +31,7 @@ class funciones:
         import pandas as pd
         import numpy as np
         from datetime import datetime
+        from pyspark.shell import spark
         # Quitamos los mensajes de warning
         import warnings
         warnings.filterwarnings('ignore')
@@ -207,6 +208,7 @@ class funciones:
         from datetime import datetime, timedelta
         from calendar import monthrange
         from dateutil.relativedelta import relativedelta
+        from pyspark.shell import spark
         # Quitamos los mensajes de warning
         import warnings
         warnings.filterwarnings('ignore')
@@ -563,6 +565,7 @@ class funciones:
         import pandas as pd
         import numpy as np
         from datetime import datetime
+        from pyspark.shell import spark
         # Quitamos los mensajes de warning
         import warnings
         warnings.filterwarnings('ignore')
@@ -711,6 +714,7 @@ class funciones:
         import pandas as pd
         import numpy as np
         from datetime import datetime
+        from pyspark.shell import spark
         # Quitamos los mensajes de warning
         import warnings
         warnings.filterwarnings('ignore')

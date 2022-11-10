@@ -380,8 +380,11 @@ class funciones:
             - tipo: Indica si el dataset generado corresponde al periodo de BASELINE o algun otro periodo (performance). Por defecto es 'PERFORMANCE'. 
         """
         
+        # Levantamos spark
+        from pyspark.shell import spark
+
         # Seteamos a nonstrict el partition mode
-        result = sqlContext.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
+        result = spark.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
         
         # Insertamos la tabla de performance 
         df_res_bines.write.mode("overwrite").insertInto(f"{ambiente}.indicadores_bines",overwrite=True)
@@ -520,15 +523,11 @@ class funciones:
             - df_psi: Dataframe que tiene el psi del modelo
             - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
         """
-        # Levantamos la sesión de spark
-        from pyspark.sql import SparkSession, SQLContext
-
-        spark = SparkSession.builder.appName("Monitoring Functions").getOrCreate()
-        sc=spark.sparkContext
-        sqlContext = SQLContext(sc)
+        # Levantamos spark
+        from pyspark.shell import spark
 
         # Seteamos a nonstrict el partition mode
-        result = sqlContext.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
+        result = spark.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
 
         # Insertamos la tabla de psi 
         df_psi.write.mode("overwrite").insertInto(f"{ambiente}.indicadores_psi",overwrite=True)
@@ -888,15 +887,11 @@ class funciones:
             - df_vdi: Dataframe que tiene el el vdi de las variables cualitativas o cuantitativas del modelo.
             - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
         """
-        # Levantamos la sesión de spark
-        from pyspark.sql import SparkSession, SQLContext
-
-        spark = SparkSession.builder.appName("Monitoring Functions").getOrCreate()
-        sc=spark.sparkContext
-        sqlContext = SQLContext(sc)
+        # Levantamos spark
+        from pyspark.shell import spark
 
         # Seteamos a nonstrict el partition mode
-        result = sqlContext.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
+        result = spark.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
 
         # Insertamos la tabla de psi 
         df_vdi.write.mode("overwrite").insertInto(f"{ambiente}.indicadores_vdi",overwrite=True)

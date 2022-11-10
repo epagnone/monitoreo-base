@@ -12,7 +12,7 @@ class funciones:
     @staticmethod
     def vdi_bl(id, fecha_foto, variables, abt_modelo, nombre_modelo, tipo_variables='cualitativas', ambiente='sdb_datamining'):
         """Función que calcula el baseline de la distribución de las variables cuantitativas y cualitativas.
-
+    
         Inputs:
         -------
             - id: Nombre del campo que identifica el 'id' del modelo por ejemplo el campo 'linea' o el campo 'id_suscripcion'.
@@ -21,7 +21,8 @@ class funciones:
             - abt_modelo: Nombre de la tabla donde se encuentra el id y el score del modelo.
             - nombre_modelo: Nombre del modelo a monitorear el performance.
             - tipo_variables: Indica si el grupo de variables es cualitativa o cuantitativa. Por defecto 'CUALITATIVAS'.
-            - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
+            - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). 
+                        Por defecto 'sdb_datamining'.
 
         Outputs:
         -------

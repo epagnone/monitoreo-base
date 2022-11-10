@@ -4,25 +4,26 @@ Este repositorio contiene el código para desarrollar las funciones de monitoreo
 A su vez, tiene funciones que permiten insertar la salida de las funciones anteriormente mencionadas (_dataframes_ de _pyspark_) en las tablas de [monitoreo de modelos](https://docucio.telecom.com.ar/pages/viewpage.action?pageId=47908003) 
 Las funciones son las siguientes:
 
-## vdi
+## vdi_bl
 Función que calcula el baseline de la distribución de las variables cuantitativas y cualitativas.
 
-    Inputs:
-    -------
-        - id: Nombre del campo que identifica el 'id' del modelo por ejemplo el campo 'linea' o el campo 'id_suscripcion'.
-        - fecha_foto: fecha en la que se requiere ver la distribución de las variables yyyymmdd.
-        - variables: lista de variables a monitorear. No más de 20 variables.
-        - abt_modelo: Nombre de la tabla donde se encuentra el id y el score del modelo.
-        - nombre_modelo: Nombre del modelo a monitorear el performance.
-        - tipo_variables: Indica si el grupo de variables es cualitativa o cuantitativa. Por defecto 'CUALITATIVAS'.
-        - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
-    
-    Outputs:
-    -------
-        - df_vdi_bl: Dataframe con la distribución baseline de las variables
+        Inputs:
+        -------
+            - id: Nombre del campo que identifica el 'id' del modelo por ejemplo el campo 'linea' o el campo 'id_suscripcion'.
+            - fecha_foto: fecha en la que se requiere ver la distribución de las variables yyyymmdd.
+            - variables: lista de variables a monitorear. No más de 20 variables.
+            - abt_modelo: Nombre de la tabla donde se encuentra el id y el score del modelo.
+            - nombre_modelo: Nombre del modelo a monitorear el performance.
+            - tipo_variables: Indica si el grupo de variables es cualitativa o cuantitativa. Por defecto 'CUALITATIVAS'.
+            - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). 
+                        Por defecto 'sdb_datamining'.
+
+        Outputs:
+        -------
+            - df_vdi_bl: Dataframe con la distribución baseline de las variables
 
 ## insert_vdi
-Función que inseta en hadoop la tabla del baseline de vdi.
+Función que inserta en hadoop la tabla del baseline de vdi.
 
     Inputs:
     -------
@@ -134,7 +135,7 @@ Nota: Previamente hay que definir un baseline de las variables cuantitativas.
         
         
 ## insert_vdi
-Función que inserta en hadoop la tabla del baseline de vdi (aplica para cualitativas y cuantitativas)
+Función que inserta en hadoop la tabla del vdi (aplica para cualitativas y cuantitativas)
 
     Inputs:
     -------

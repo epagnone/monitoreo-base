@@ -14,7 +14,7 @@ from pyspark.shell import spark
 
 
 class funciones:
-    """Refactor de funciones ahora con mas OOP para el deleite de la dama y el disfrute del caballero
+    """Refactor de funciones ahora con 40% + OOP para el deleite de la dama y el disfrute del caballero
     
     Metodos:
     
@@ -41,15 +41,30 @@ class funciones:
     
         """
     
-    def __init__(self, id, abt_modelo, nombre_modelo, ambiente='sdb_datamining') -> None:
+    def __init__(self, id, abt_modelo, nombre_modelo, fecha_foto=None, ambiente='sdb_datamining') -> None:
         self.id=id,
         self.abt_modelo=abt_modelo,
         self.nombre_modelo=nombre_modelo,
         self.ambiente=ambiente
+    
+    def set_fecha_foto(self, fechafoto:str)->None:
+        self.set_fecha_foto=fechafoto
+        
+    def __str__(self) -> str:
+        print("id", self.id)
+        print("abt_modelo", self.abt_modelo)
+        print("nombre_modelo", self.nombre_modelo)
+        print("ambiente", self.ambiente)
+        
+    def __check_fecha_foto(fecha_foto, self)->str:
+        if fecha_foto==None and self.fecha_foto==None:
+            print("fecha_foto no esta definida ni pasada por parametro")
+            raise
+        else:
+            return fecha_foto if not None else self.fecha_foto
         
     
-    
-    def vdi_bl(self, fecha_foto, variables, tipo_variables='cualitativas') -> spark.DataFrame: #Ojo... asumo tipado... verificar si existe siquiera
+    def vdi_bl(self, variables, fecha_foto=None, tipo_variables='cualitativas') -> spark.DataFrame: #Ojo... asumo tipado... verificar si existe siquiera
         """Función que calcula el baseline de la distribución de las variables cuantitativas y cualitativas.
     
         Inputs:
@@ -68,6 +83,7 @@ class funciones:
             - df_vdi_bl: Dataframe con la distribución baseline de las variables
 
         """
+        fecha_foto=self.__check_fecha_foto(fecha_foto) #Valido que fechafoto exista en el objeto, o en parametro, si falla salto por excepcion, hago custom?
         
         # Validamos que se pasen como parámetro solamente 20 variables
         assert len(variables)<=20, 'Debe insertar 20 variables como máximo'
@@ -185,7 +201,7 @@ class funciones:
             - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
         """
             # Seteamos a nonstrict el partition mode
-        result = spark.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
+        result = spark.sql("""set hive.exec.dynamic.partition.mode=nonstrict""") #Todo: No se usa, eliminar
         flag = False
 
         if tipo_variables.lower() == 'cualitativas':
@@ -306,7 +322,7 @@ class funciones:
         df_res['tipo'] = tipo
 
         df_res['bin']=df_res['Bin'].index.tolist()
-        Bin = df_res.pop('Bin')
+        Bin = df_res.pop('Bin') #Todo: No se usa variable
 
         # Ordenamos los campos
         df_res_move=df_res[['anio', 'mes', 'dia', 'bin', 'Positivos', 'Totales', 'min_p_target', 'max_p_target'
@@ -414,7 +430,7 @@ class funciones:
             print(f'Insertamos {df_res_bines.count()} registros en la tabla indicadores_bines, {df_res_metricas.count()} en la tabla indicadores_performance.')
             
    
-    def psi(self, score, fecha_foto):
+    def psi(self, score, fecha_foto=None):
         """
         Función que calcula el psi (Population Stability Index) para los modelos de clasificación.
         E inserta en la tabla de psi el calculo del contribution_to_index por bin (el psi es la suma de contribution_to_index)
@@ -433,7 +449,7 @@ class funciones:
             - df_ind_PSI: Dataframe con el calculo de contribution_to_index por bin.
 
         """
-      
+        fecha_foto=self.__check_fecha_foto(fecha_foto) #Valido que fechafoto exista en el objeto, o en parametro, si falla salto por excepcion, excepcion custom?
 
         # Calculamos el periodo en base a la fecha de la foto de los datos
         fecha_foto_dt = datetime.strptime(fecha_foto, '%Y%m%d')
@@ -540,7 +556,7 @@ class funciones:
 
         print(f'Insertamos {df_psi.count()} registros en la tabla indicadores_psi.')
         
-    def vdi_cualitativas(self, score, variables,fecha_foto):
+    def vdi_cualitativas(self, score, variables,fecha_foto=None):
         """
         Función que calcula el vdi para las variables cualitativas.
         Nota: Previamente hay que definir un baseline de las variables cualitativas.
@@ -560,6 +576,8 @@ class funciones:
             - df_vdi_cuali_move: dataframe de spark con el calculo del vdi de cada una de las variables cualitativas.
 
         """
+        fecha_foto=self.__check_fecha_foto(fecha_foto) #Valido que fechafoto exista en el objeto, o en parametro, si falla salto por excepcion, excepcion custom?
+        
         # Validamos que se ingrese la cantidad de variables adecuada
         assert len(variables)<=20 , "No puede insertar más de 20 variables. Las variables deben estar definidas en la tabla de baseline"
 
@@ -678,7 +696,7 @@ class funciones:
         df_vdi_cuali_move =spark.createDataFrame(df_vdi_cualii)
 
         return df_vdi_cuali_move
-    def vdi_cuantitativas(self, score, variables,fecha_foto,):
+    def vdi_cuantitativas(self, score, variables,fecha_foto=None):
         """
         Función que calcula el vdi para las variables cuantitativas.
         Nota: Previamente hay que definir un baseline de las variables cuantitativas.
@@ -696,7 +714,9 @@ class funciones:
         Outputs:
         --------
             - df_vdi_cuanti_move: dataframe en spark con el calculo del vdi de cada una de las variables cuantitativas.
-       """
+        """
+        fecha_foto=self.__check_fecha_foto(fecha_foto) #Valido que fechafoto exista en el objeto, o en parametro, si falla salto por excepcion, excepcion custom?
+       
         # Validamos que se pasen como parámetro máximo 20 variables
         assert len(variables)<=20 , "No puede insertar más de 20 variables. Las variables deben estar definidas en la tabla de baseline"
 

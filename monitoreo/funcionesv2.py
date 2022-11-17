@@ -1,24 +1,22 @@
 import pandas as pd
-import numpy as np
-from datetime import datetime
-import pandas as pd
-import numpy as np
-from datetime import datetime
-import pandas as pd
 import numpy as np 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta #Todo: No se usa timedelta
 from calendar import monthrange
-from dateutil.relativedelta import relativedelta
+from dateutil.relativedelta import relativedelta#Todo: No se usa relativedelta
 from pyspark.shell import spark
         
 
 
-class funciones:
-    """Refactor de funciones ahora con 40% + OOP para el deleite de la dama y el disfrute del caballero
+class Funciones:
+    """Refactor de funciones de monitoreo, ahora con 30% + OOP para el deleite de la dama y el disfrute del caballero
+    
+    
     
     Metodos:
     
     def vdi_bl(self, fecha_foto, variables, tipo_variables='cualitativas')-> spark.DataFrame:
+    
+    def performance(self, query, fecha_score, cant_bines = 20, tipo= 'PERFORMANCE'): #ToDo: tipo no es redundante? al final la funcion es para performance
     
     def insert_performance(df_res_bines, df_res_metricas, df_psi=0, tipo = 'PERFORMANCE'): #ToDo: idem anterior
     
@@ -32,20 +30,45 @@ class funciones:
     
     def insert_vdi(df_vdi):
     
+    def __str__(self) -> str:       -> De puro inchabolas que soy nomas
+    
+    def __repr__(self) -> str:      -> Tambien, pero lo uso para intentar rastrear instancias..
+
+    Ideota: pasar vdi_bl, performance, insert_performance a funciones privadas y ejecutarlas via 
+                performance_baseline, vdi_basline, o vdi y performance segun el caso... ver idea en version 3
+    
+    
     
     Propiedades    
         self.id=id,
         self.abt_modelo=abt_modelo,
         self.nombre_modelo=nombre_modelo,
         self.ambiente=ambiente
-    
+        self.fecha_foto=None -> reasignable con metodo set
         """
+    instancias=[]
+    
     
     def __init__(self, id, abt_modelo, nombre_modelo, fecha_foto=None, ambiente='sdb_datamining') -> None:
+        
+        #Asserts....
+        
+        
+        
         self.id=id,
         self.abt_modelo=abt_modelo,
         self.nombre_modelo=nombre_modelo,
         self.ambiente=ambiente
+        
+        
+        #Raestro de instancias... ver si funciona en zeppelin
+        Funciones.instancias.append(self)
+    
+    
+    
+    def __repr__(self) -> str:
+        return f"Funciones({self.id},{self.abt_modelo},{self.nombre_modelo},{self.ambiente})"
+    
     
     def set_fecha_foto(self, fechafoto:str)->None:
         self.set_fecha_foto=fechafoto
@@ -61,7 +84,7 @@ class funciones:
             print("fecha_foto no esta definida ni pasada por parametro")
             raise
         else:
-            return fecha_foto if not None else self.fecha_foto
+            return fecha_foto if fecha_foto != None else self.fecha_foto
         
     
     def vdi_bl(self, variables, fecha_foto=None, tipo_variables='cualitativas') -> spark.DataFrame: #Ojo... asumo tipado... verificar si existe siquiera

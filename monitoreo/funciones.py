@@ -273,7 +273,7 @@ class funciones:
         # Capturamos la probabilidad máxima y mínima por grupo
         a=df_res['percentil'].astype(str)
 
-                df_res['max_p_target']=a.str.slice(start=-7).str.replace(']','').str.replace('1,','').str.replace('2,','').str.replace('3,','').str.replace('4,','').str.replace('5,','').str.replace('6,','').str.replace('7,','').str.replace('8,','').str.replace('9,','').str.replace(', ','').astype(float)
+        df_res['max_p_target']=a.str.slice(start=-7).str.replace(']','').str.replace('1,','').str.replace('2,','').str.replace('3,','').str.replace('4,','').str.replace('5,','').str.replace('6,','').str.replace('7,','').str.replace('8,','').str.replace('9,','').str.replace(', ','').astype(float)
         df_res['min_p_target']=a.str.slice(1,6).str.replace(',','').astype(float)
 
         # Renombramos los campos calculados/generados

@@ -10,7 +10,7 @@ class funciones:
         
     
     @staticmethod
-	def calcular_vdi_cuantitativas_baseline(id, fecha_foto, variables, abt_modelo, nombre_modelo, ambiente='sdb_datamining'):
+    def calcular_vdi_cuantitativas_baseline(id, fecha_foto, variables, abt_modelo, nombre_modelo, ambiente='sdb_datamining'):
 		"""Función que calcula el baseline de la distribución de las variables cuantitativas.
 	
 		Inputs:
@@ -110,8 +110,8 @@ class funciones:
 		return df_vdi_cuanti_bl
     
     @staticmethod
-	def calcular_vdi_cualitativas_baseline(id, fecha_foto, variables, abt_modelo, nombre_modelo, ambiente='sdb_datamining'):
-		"""Función que calcula el baseline de la distribución de las variables cualitativas.
+    def calcular_vdi_cualitativas_baseline(id, fecha_foto, variables, abt_modelo, nombre_modelo, ambiente='sdb_datamining'):
+        """Función que calcula el baseline de la distribución de las variables cualitativas.
 	
 		Inputs:
 		-------
@@ -1071,7 +1071,7 @@ class funciones:
         
     @staticmethod
     def insertar_performance_actual(df_res_bines, df_res_metricas, ambiente='sdb_datamining'):
-         """Función que inserta en hadoop la tabla de performance y las métricas de performance de un modelo 
+        """Función que inserta en hadoop la tabla de performance y las métricas de performance de un modelo 
         Inputs:
         -------
             - df_res_bines: Dataframe en spark que contienen la tabla de performance

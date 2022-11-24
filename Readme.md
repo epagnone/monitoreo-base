@@ -3,13 +3,6 @@
 Este repositorio contiene el código para desarrollar las funciones de monitoreo tanto del _performance_ como de la estabilidad de los modelos de clasificación **binaria**. 
 A su vez, tiene funciones que permiten insertar la salida de las funciones anteriormente mencionadas (_dataframes_ de _pyspark_) en las tablas de [monitoreo de modelos](https://docucio.telecom.com.ar/pages/viewpage.action?pageId=47908003).
 
-La siguiente tabla muestra una descripción general de las funciones:
-
-|------|------|------|--------|
-|**Nombre anterior** | **Nombre actual**|**Descripción**|**Tipo**|
-|vdi_bl| calcular_vdi_cuantitativas_baseline| Calcula el **_baseline_** de las variables **cuantitativas** para un modelo y fecha en particular|Cálculo|
-
-
 Las funciones son las siguientes:
 
 ## calcular_vdi_cuantitativas_baseline

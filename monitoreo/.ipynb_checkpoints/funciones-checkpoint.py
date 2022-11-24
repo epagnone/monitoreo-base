@@ -10,178 +10,197 @@ class funciones:
         
     
     @staticmethod
-    def vdi_bl(id, fecha_foto, variables, abt_modelo, nombre_modelo, tipo_variables='cualitativas', ambiente='sdb_datamining'):
-        """Función que calcula el baseline de la distribución de las variables cuantitativas y cualitativas.
-    
-        Inputs:
-        -------
-            - id: Nombre del campo que identifica el 'id' del modelo por ejemplo el campo 'linea' o el campo 'id_suscripcion'.
-            - fecha_foto: fecha en la que se requiere ver la distribución de las variables yyyymmdd.
-            - variables: lista de variables a monitorear. No más de 20 variables.
-            - abt_modelo: Nombre de la tabla donde se encuentra el id y el score del modelo.
-            - nombre_modelo: Nombre del modelo a monitorear el performance.
-            - tipo_variables: Indica si el grupo de variables es cualitativa o cuantitativa. Por defecto 'CUALITATIVAS'.
-            - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). 
-                        Por defecto 'sdb_datamining'.
-
-        Outputs:
-        -------
-            - df_vdi_bl: Dataframe con la distribución baseline de las variables
-
-        """
-        import pandas as pd
-        import numpy as np
-        from datetime import datetime
-        from pyspark.shell import spark
-        # Quitamos los mensajes de warning
-        import warnings
-        warnings.filterwarnings('ignore')
-
-        # Validamos que se pasen como parámetro solamente 20 variables
-        assert len(variables)<=20, 'Debe insertar 20 variables como máximo'
-
-        # Genemos el periodo de score
-        fecha_foto_dt = datetime.strptime(fecha_foto, '%Y%m%d')
-        periodo = int(fecha_foto_dt.strftime('%Y%m'))
-
-        # Creamos el query que levanta las n variables especificadas en 'variables' y lo pasamos a pandas
-
-        query = f"""select {id}
-                 """
-        for i in range(0, len(variables)):
-            query += f"""
-            ,{variables[i]}"""
-            # Guardamos en un string las variables para levantar del baseline
-            if i ==0:
-                lista_variables = f"""'{variables[i]}'"""
-            else:
-                lista_variables += f""",'{variables[i]}'"""
-
-        query += f"""
-            from {ambiente}.{abt_modelo} 
-            where periodo={periodo}"""
-
-        df_baseline = spark.sql(query)
-        df_baseline=df_baseline.toPandas()
-
-        # Generamos el baseline
-        ## Definimos dataframe que acumule los baseline de las variables
-        df_vdi_bl=pd.DataFrame()
-
-        ## Cuantitativas
-        if tipo_variables.upper().strip() == 'CUANTITATIVAS':
-
-            for variable in variables:
-
-                # Definimos 10 grupos en base a la distribución de la variable
-                sub = df_baseline[[variable]]
-                sub=sub.sort_values(by =[variable])
-                sub['rank']=pd.qcut(sub[variable], q=10,duplicates='drop')
-
-                # Calculamos los totales, valor_maximo y valor_minimo en cada rango
-                count = sub.groupby(['rank'])[[variable]].count().rename(columns={variable:"totales"})
-                max_val= sub.groupby(['rank'])[[variable]].max().rename(columns={variable:"max_val"})
-                min_val= sub.groupby(['rank'])[[variable]].min().rename(columns={variable:"min_val"})
-
-                # Joineamos cada unos de los valores
-                tmp_var=pd.merge(count, max_val,  on = 'rank')
-                tmp_var=pd.merge(tmp_var, min_val,  on = 'rank')
-
-                # Añadimos el nombre de la variable por la que estamos iterando
-                tmp_var['var']=variable
-
-                # Añadimos el número de bin
-                tmp_var=tmp_var.reset_index()
-                tmp_var['bin']= tmp_var.index.tolist()
-
-                # Seleccionamos los campos
-                var = tmp_var[['var', 'bin', 'totales', 'min_val','max_val']]
-
-                # Appendemos los baseline de cada variable
-                df_vdi_bl=df_vdi_bl.append(var)
-
-            # Seteamos campos complementarios necesarios para tabla
-            df_vdi_bl['fecha_foto']=fecha_foto
-            df_vdi_bl['modelo']= nombre_modelo
-            df_vdi_bl['positivos']= 0
-            df_vdi_bl['min_p']= 0
-            df_vdi_bl['max_p']= 0
-
-            df_vdi_bl=df_vdi_bl[['var', 'bin', 'totales', 'positivos','min_p', 'max_p','min_val','max_val', 'fecha_foto', 'modelo']]
-
-            # Transformamos a spark
-            df_vdi_bl =spark.createDataFrame(df_vdi_bl)
-
-         ## Cualitativas
-        if tipo_variables.upper().strip() == 'CUALITATIVAS':
-            for variable in variables:
-
-                # Calculamos los totales por cada categoría
-                sub = df_baseline[[variable]]
-                sub=sub.sort_values(by =[variable])
-                tmp_var = sub.groupby([variable])[[variable]].count().rename(columns={variable:"totales"})
-
-                # Añadimos el nombre de la variable por la que estamos iterando
-                tmp_var['var']=variable
-                tmp_var['bin']= tmp_var.index.tolist()
-                tmp_var['bin'] = tmp_var['bin'].astype(str)
-
-                # Seleccionamos los campos
-                var = tmp_var[['bin','var', 'totales']]
-
-                # Appendemos los baseline de cada variable
-                df_vdi_bl=df_vdi_bl.append(var)
-
-            # Seteamos campos complementarios necesarios para la tabla
-            df_vdi_bl['fecha_foto']=fecha_foto
-            df_vdi_bl['modelo']= nombre_modelo
-            df_vdi_bl['categoria']=df_vdi_bl['bin']
-            df_vdi_bl['bin']=0
-            df_vdi_bl=df_vdi_bl[['bin','var','totales','categoria', 'fecha_foto', 'modelo']]
-
-            # Transformamos a spark
-            df_vdi_bl =spark.createDataFrame(df_vdi_bl)
-
-        return df_vdi_bl
+	def calcular_vdi_cuantitativas_baseline(id, fecha_foto, variables, abt_modelo, nombre_modelo, ambiente='sdb_datamining'):
+		"""Función que calcula el baseline de la distribución de las variables cuantitativas.
+	
+		Inputs:
+		-------
+			- id: Nombre del campo que identifica el 'id' del modelo por ejemplo el campo 'linea' o el campo 'id_suscripcion'.
+			- fecha_foto: fecha en la que se requiere ver la distribución de las variables yyyymmdd.
+			- variables: lista de variables a monitorear. No más de 20 variables.
+			- abt_modelo: Nombre de la tabla donde se encuentra el id y el score del modelo.
+			- nombre_modelo: Nombre del modelo a monitorear el performance.
+			- ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). 
+						Por defecto 'sdb_datamining'.
+		Outputs:
+		-------
+			- df_vdi_cuanti_bl: Dataframe con la distribución baseline de las variables
+		"""
+		# Importamos librerías
+		import pandas as pd
+		import numpy as np
+		from datetime import datetime
+		from pyspark.shell import spark
+		# Quitamos los mensajes de warning
+		import warnings
+		warnings.filterwarnings('ignore')
+	
+		# Validamos que se pasen como parámetro solamente 20 variables
+		assert len(variables)<=20, 'Debe insertar 20 variables como máximo'
+	
+		# Genemos el periodo de score
+		fecha_foto_dt = datetime.strptime(fecha_foto, '%Y%m%d')
+		periodo = int(fecha_foto_dt.strftime('%Y%m'))
+	
+		# Creamos el query que levanta las n variables especificadas en 'variables' y lo pasamos a pandas
+	
+		query = f"""select {id}
+				"""
+		for i in range(0, len(variables)):
+			query += f"""
+			,{variables[i]}"""
+			# Guardamos en un string las variables para levantar del baseline
+			if i ==0:
+				lista_variables = f"""'{variables[i]}'"""
+			else:
+				lista_variables += f""",'{variables[i]}'"""
+	
+		query += f"""
+			from {ambiente}.{abt_modelo} 
+			where periodo={periodo}"""
+	
+		df_baseline = spark.sql(query)
+		df_baseline=df_baseline.toPandas()
+	
+		# Generamos el baseline
+		## Definimos dataframe que acumule los baseline de las variables
+		df_vdi_cuanti_bl=pd.DataFrame()
+	
+		for variable in variables:
+	
+			# Definimos 10 grupos en base a la distribución de la variable
+			sub = df_baseline[[variable]]
+			sub=sub.sort_values(by =[variable])
+			sub['rank']=pd.qcut(sub[variable], q=10,duplicates='drop')
+	
+			# Calculamos los totales, valor_maximo y valor_minimo en cada rango
+			count = sub.groupby(['rank'])[[variable]].count().rename(columns={variable:"totales"})
+			max_val= sub.groupby(['rank'])[[variable]].max().rename(columns={variable:"max_val"})
+			min_val= sub.groupby(['rank'])[[variable]].min().rename(columns={variable:"min_val"})
+	
+			# Joineamos cada unos de los valores
+			tmp_var=pd.merge(count, max_val,  on = 'rank')
+			tmp_var=pd.merge(tmp_var, min_val,  on = 'rank')
+	
+			# Añadimos el nombre de la variable por la que estamos iterando
+			tmp_var['var']=variable
+	
+			# Añadimos el número de bin
+			tmp_var=tmp_var.reset_index()
+			tmp_var['bin']= tmp_var.index.tolist()
+	
+			# Seleccionamos los campos
+			var = tmp_var[['var', 'bin', 'totales', 'min_val','max_val']]
+	
+			# Appendemos los baseline de cada variable
+			df_vdi_cuanti_bl=df_vdi_cuanti_bl.append(var)
+	
+		# Seteamos campos complementarios necesarios para tabla
+		df_vdi_cuanti_bl['fecha_foto']=fecha_foto
+		df_vdi_cuanti_bl['modelo']= nombre_modelo
+		df_vdi_cuanti_bl['positivos']= 0
+		df_vdi_cuanti_bl['min_p']= 0
+		df_vdi_cuanti_bl['max_p']= 0
+	
+		df_vdi_cuanti_bl=df_vdi_cuanti_bl[['var', 'bin', 'totales', 'positivos','min_p', 'max_p','min_val','max_val', 'fecha_foto', 'modelo']]
+	
+		# Transformamos a spark
+		df_vdi_cuanti_bl =spark.createDataFrame(df_vdi_cuanti_bl)
+	
+		return df_vdi_cuanti_bl
     
     @staticmethod
-    def insert_vdi_bl(df_vdi_bl, tipo_variables='cualitativas', ambiente='sdb_datamining'):
-        """Función que inseta en hadoop la tabla del baseline de vdi
-        Inputs:
-        -------
-            - df_vdi_bl: Dataframe de spark a insertar en hadoop.
-            - tipo_variables: Indica si el grupo de variables es cualitativa o cuantitativa. Por defecto 'CUALITATIVAS'.
-            - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
-        """
-        # Levantamos spark
-        from pyspark.shell import spark
-
-        # Seteamos a nonstrict el partition mode
-        result = spark.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
-        flag = False
-
-        if tipo_variables.lower() == 'cualitativas':
-            table = 'indicadores_vdi_cuali_bl'
-            flag = True
-        elif tipo_variables.lower() == 'cuantitativas':
-            table = 'indicadores_vdi_cuanti_bl'
-            flag = True
-
-        if flag:
-            df_vdi_bl.write.mode("overwrite").insertInto(f"{ambiente}.{table}",overwrite=True)   
-            print(f'Va insertó {df_vdi_bl.count()} registros en la tabla {table}')
-        else:
-            print('El tipo de variable tiene que ser cualitativas o cuantitativas')
-            
-            
+	def calcular_vdi_cualitativas_baseline(id, fecha_foto, variables, abt_modelo, nombre_modelo, ambiente='sdb_datamining'):
+		"""Función que calcula el baseline de la distribución de las variables cualitativas.
+	
+		Inputs:
+		-------
+			- id: Nombre del campo que identifica el 'id' del modelo por ejemplo el campo 'linea' o el campo 'id_suscripcion'.
+			- fecha_foto: fecha en la que se requiere ver la distribución de las variables yyyymmdd.
+			- variables: lista de variables a monitorear. No más de 20 variables.
+			- abt_modelo: Nombre de la tabla donde se encuentra el id y el score del modelo.
+			- nombre_modelo: Nombre del modelo a monitorear el performance.
+			- ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). 
+						Por defecto 'sdb_datamining'.
+		Outputs:
+		-------
+			- df_vdi_cuali_bl: Dataframe con la distribución baseline de las variables
+		"""
+		import pandas as pd
+		import numpy as np
+		from datetime import datetime
+		from pyspark.shell import spark
+		# Quitamos los mensajes de warning
+		import warnings
+		warnings.filterwarnings('ignore')
+	
+		# Validamos que se pasen como parámetro solamente 20 variables
+		assert len(variables)<=20, 'Debe insertar 20 variables como máximo'
+	
+		# Genemos el periodo de score
+		fecha_foto_dt = datetime.strptime(fecha_foto, '%Y%m%d')
+		periodo = int(fecha_foto_dt.strftime('%Y%m'))
+	
+		# Creamos el query que levanta las n variables especificadas en 'variables' y lo pasamos a pandas
+	
+		query = f"""select {id}
+				"""
+		for i in range(0, len(variables)):
+			query += f"""
+			,{variables[i]}"""
+			# Guardamos en un string las variables para levantar del baseline
+			if i ==0:
+				lista_variables = f"""'{variables[i]}'"""
+			else:
+				lista_variables += f""",'{variables[i]}'"""
+	
+		query += f"""
+			from {ambiente}.{abt_modelo} 
+			where periodo={periodo}"""
+	
+		df_baseline = spark.sql(query)
+		df_baseline=df_baseline.toPandas()
+	
+		# Generamos el baseline
+		## Definimos dataframe que acumule los baseline de las variables
+		df_vdi_cuali_bl=pd.DataFrame()
+	
+		for variable in variables:
+	
+			# Calculamos los totales por cada categoría
+			sub = df_baseline[[variable]]
+			sub=sub.sort_values(by =[variable])
+			tmp_var = sub.groupby([variable])[[variable]].count().rename(columns={variable:"totales"})
+	
+			# Añadimos el nombre de la variable por la que estamos iterando
+			tmp_var['var']=variable
+			tmp_var['bin']= tmp_var.index.tolist()
+			tmp_var['bin'] = tmp_var['bin'].astype(str)
+	
+			# Seleccionamos los campos
+			var = tmp_var[['bin','var', 'totales']]
+	
+			# Appendemos los baseline de cada variable
+			df_vdi_cuali_bl=df_vdi_cuali_bl.append(var)
+	
+		# Seteamos campos complementarios necesarios para la tabla
+		df_vdi_cuali_bl['fecha_foto']=fecha_foto
+		df_vdi_cuali_bl['modelo']= nombre_modelo
+		df_vdi_cuali_bl['categoria']=df_vdi_cuali_bl['bin']
+		df_vdi_cuali_bl['bin']=0
+		df_vdi_cuali_bl=df_vdi_cuali_bl[['bin','var','totales','categoria', 'fecha_foto', 'modelo']]
+	
+		# Transformamos a spark
+		df_vdi_cuali_bl =spark.createDataFrame(df_vdi_cuali_bl)
+	
+		return df_vdi_cuali_bl
+    
     @staticmethod
-    def performance(abt_modelo, nombre_modelo, query, fecha_score, cant_bines = 20, ambiente='sdb_datamining', tipo= 'PERFORMANCE'):
+    def calcular_performance_actual(abt_modelo, nombre_modelo, query, fecha_score, cant_bines = 20, ambiente='sdb_datamining'):
         """
-        Función que calcula las métricas de performance para los modelos de clasificación binaria, tales como Information Value, Kolmogorov Smirnov (KS), Gini, AUC. 
-        También, crea la tabla de performance en donde podemos apreciar métricas tales como Lift Acumulado, % Captura, % Conversión.
-        En el caso de que el parámetro 'tipo' tenga valor 'BASELINE'se creará un dataframe que tenga el psi del periodo especificado.
+        Función que calcula las métricas de performance (para modelos de clasificación binaria) tales como: Information Value, Kolmogorov Smirnov (KS), Gini, AUC, para un periodo en particular, considerando un baseline.
+        También, crea la tabla de performance (para modelos de clasificación binaria) para un periodo en particular, considerando un baseline, en donde podemos apreciar métricas tales como Lift Acumulado, % Captura, % Conversión.
         Importante: Enviamos como parámetro el query que joinea el target con el score.
-
         Inputs:
         -------
             - abt_modelo: Nombre de la tabla donde se encuentra el id y el score del modelo a monitorear el performance.
@@ -190,13 +209,10 @@ class funciones:
             - fecha_score: Fecha en la que se requiere verificar el performance del modelo. Está en formato yyyymmdd.
             - cant_bines: Cantidad de bines que se creará con la distribución del score. Aplica solo para el baseline. Por defecto 20.
             - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
-            - tipo: Indica si la fecha en la cual ejecutamos la función corresponde al periodo de BASELINE o algun otro periodo (performance). Por defecto es 'PERFORMANCE'. 
-                    Si es BASELINE crea la tabla de performance en base a la distribución del score y genera el baseline de PSI, si es PERFORMANCE usa los puntos del corte del último baseline.
 
         Outputs:
         --------
-            - df_res_bines, df_res_metricas, df_psi: Dataframes en spark que contienen la tabla de performance, la tabla con las métricas de performance y el baseline del psi (si se ejecuta el BASELINE, caso contrario devuelve un dataframe vacio),respectivamente.
-
+            - df_res_bines, df_res_metricas: Dataframes en spark que contienen la tabla de performance, la tabla con las métricas de performance.
         """
         # Importamos librerías
         import pandas as pd
@@ -213,35 +229,31 @@ class funciones:
         df_val = spark.sql(query)
         df_bin=df_val.toPandas()
 
-        # Si tipo = 'PERFORMANCE' entonces cargamos el baseline y sus respectivos puntos de corte.
-        if tipo == 'PERFORMANCE':
-            # Cargamos el último baseline y lo pasamos a pandas
-            query=f"""
-            select max_p_target from {ambiente}.indicadores_bines 
-            where modelo='{nombre_modelo}' and tipo='BASELINE' 
-            and fecha =(select max(fecha) from {ambiente}.indicadores_bines 
-                    where modelo='{nombre_modelo}' and tipo='BASELINE' )
-            order by max_p_target"""
-            df_baseline=spark.sql(query)
-            df_baseline=df_baseline.toPandas()
+        # Cargamos el último baseline y lo pasamos a pandas
+        query=f"""
+        select max_p_target from {ambiente}.indicadores_bines 
+        where modelo='{nombre_modelo}' and tipo='BASELINE' 
+        and fecha =(select max(fecha) from {ambiente}.indicadores_bines 
+                where modelo='{nombre_modelo}' and tipo='BASELINE' )
+        order by max_p_target"""
+        df_baseline=spark.sql(query)
+        df_baseline=df_baseline.toPandas()
 
-            # Ordenamos los puntos de corte
-            df_baseline = df_baseline.sort_values(by='max_p_target')
+        # Ordenamos los puntos de corte
+        df_baseline = df_baseline.sort_values(by='max_p_target')
 
+        # Capturamos los puntos de corte
+        cut_bin=df_baseline['max_p_target'].tolist()
+        cut_bin.insert(0, 0)
+        # Asignamos el 1 como la máxima probabilidad posible
+        cut_bin[-1] = 1
 
-            # Capturamos los puntos de corte
-            cut_bin=df_baseline['max_p_target'].tolist()
-            cut_bin.insert(0, 0)
-            # Asignamos el 1 como la máxima probabilidad posible
-            cut_bin[-1] = 1
+        ##################################
+        # Tabla de performance
+        ##################################
 
-            # Definimos percentiles en base a los puntos de corte del baseline
-            df_bin['percentil']=pd.cut(df_bin['score'] , bins=cut_bin)
-
-         # Si tipo = 'BASELINE' entonces calculamos la tabla de performance y la tabla de métricas de performance considerando la distribución del score.
-        elif tipo == 'BASELINE':
-            # Definimos percentiles en base a la distribución del score
-            df_bin['percentil']=pd.qcut(df_bin['score'], cant_bines, duplicates='drop')
+        # Definimos percentiles en base a los puntos de corte del baseline
+        df_bin['percentil']=pd.cut(df_bin['score'] , bins=cut_bin)
 
         # Ordenemos la tabla y definimos los bines
         df_bin=df_bin.sort_values(by=['percentil'])
@@ -286,7 +298,7 @@ class funciones:
         df_res['mes'] = pd.DatetimeIndex(df_res['fecha']).month
         df_res['dia'] = pd.DatetimeIndex(df_res['fecha']).day
         df_res['modelo'] = nombre_modelo
-        df_res['tipo'] = tipo
+        df_res['tipo'] = 'PERFORMANCE'
 
         df_res['bin']=df_res['Bin'].index.tolist()
         Bin = df_res.pop('Bin')
@@ -298,16 +310,9 @@ class funciones:
         # Transformamos a spark
         df_res_bines =spark.createDataFrame(df_res_move)
 
-        # Si tipo es BASELINE insertamos el baseline del PSI, caso contrario, creamos un dataframe de psi vacio.
-        if tipo == 'BASELINE':
-            df_psi = df_res[['bin', 'max_p_target', 'Totales', 'fecha','tipo','modelo' ]]
-            df_psi['tipo'] = cant_bines # en el caso del baseline del psi el tipo hace referencia a la cantidad de bines que usa 
-            df_psi = spark.createDataFrame(df_psi)
-            #df_psi.write.mode("overwrite").insertInto(f"{ambiente}.indicadores_psi_bl",overwrite=True)
-        elif tipo == 'PERFORMANCE':
-            df_psi = pd.DataFrame()
-
+        ##################################
         # Indicadores de performance
+        ##################################
 
         # Nos quedamos con el bin, la maxima probabilidad, totales y positivos por bin
         df_per=df_res[['bin', 'max_p_target','Totales', 'Positivos']]
@@ -358,7 +363,172 @@ class funciones:
         df_per['mes'] = pd.DatetimeIndex(df_per['fecha']).month
         df_per['dia'] = pd.DatetimeIndex(df_per['fecha']).day
         df_per['modelo'] = nombre_modelo
-        df_per['tipo'] = tipo
+        df_per['tipo'] = 'PERFORMANCE'
+
+        # Ordenamos los campos
+        df_per=df_per[['anio','mes', 'dia','bin',	'total_nro_accts',	'total_porc',	'total_nro_goods',	'good_porc',	'cum_nro_goods',	'cum_porc_goods',	'total_nro_bads',	'bad_porc',	'cum_nro_bads',	'cum_porc_bads',	'intvl_bad_porc',	'cumulative_bad_rate',	'spread_porc',	'actual_odds',	'odds_cumulative',	'informatiovalue',	'pg',	'pb',	'area_rectangulo',	'area_triangulo',	'suma_area',	'fecha','tipo',	'modelo' ]]
+
+        # Transformamos a spark
+        df_res_metricas =spark.createDataFrame(df_per)
+
+
+        return df_res_bines, df_res_metricas
+    
+    
+    @staticmethod
+    def calcular_performance_baseline(abt_modelo, nombre_modelo, query, fecha_score, cant_bines = 20, ambiente='sdb_datamining'):
+        """
+        Función que calcula las métricas de performance de baseline para los modelos de clasificación binaria, tales como Information Value, Kolmogorov Smirnov (KS), Gini, AUC. 
+        También, crea la tabla de performance de baseline en donde podemos apreciar métricas tales como Lift Acumulado, % Captura, % Conversión.
+        Importante: Enviamos como parámetro el query que joinea el target con el score.
+        Inputs:
+        -------
+            - abt_modelo: Nombre de la tabla donde se encuentra el id y el score del modelo a monitorear el performance.
+            - nombre_modelo: Nombre del modelo a monitorear el performance.
+            - query: String que contiene el join entre el target y el score del modelo. (Respetar los 'as' en los querys)
+            - fecha_score: Fecha en la que se requiere verificar el performance del modelo. Está en formato yyyymmdd.
+            - cant_bines: Cantidad de bines que se creará con la distribución del score. Aplica solo para el baseline. Por defecto 20.
+            - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
+        Outputs:
+        --------
+            - df_res_bines, df_res_metricas, df_psi: Dataframes en spark que contienen la tabla de performance, la tabla con las métricas de performance y el baseline del psi, respectivamente.
+        """
+        # Importamos librerías
+        import pandas as pd
+        import numpy as np 
+        from datetime import datetime, timedelta
+        from calendar import monthrange
+        from dateutil.relativedelta import relativedelta
+        from pyspark.shell import spark
+        # Quitamos los mensajes de warning
+        import warnings
+        warnings.filterwarnings('ignore')
+
+        # Levantamos el join entre el target y la abt
+        df_val = spark.sql(query)
+        df_bin=df_val.toPandas()
+
+        # Definimos percentiles en base a la distribución del score
+        df_bin['percentil']=pd.qcut(df_bin['score'], cant_bines, duplicates='drop')
+
+        ##################################
+        # Tabla de performance
+        ##################################
+
+        # Ordenemos la tabla y definimos los bines
+        df_bin=df_bin.sort_values(by=['percentil'])
+        bines= pd.DataFrame({'percentil':df_bin.percentil.unique()})
+        bines['Bin'] = bines.index
+        df_bin=pd.merge(df_bin, bines, how='left', on=['percentil', 'percentil'])
+
+        # Calculamos positivos y totales por grupo
+        df_res = df_bin.groupby('percentil').agg({'target':'sum','score':'count'}).reset_index()
+
+        # Calculamos la tasa por grupo
+        df_res['porcentaje'] =100* df_res['target']/df_res['score']
+
+        # Capturamos la probabilidad máxima y mínima por grupo
+        a=df_res['percentil'].astype(str)
+        df_res['max_p_target']=a.str.slice(start=-7).str.replace(']','').str.replace('1,','').str.replace('2,','').str.replace('3,','').str.replace('4,','').str.replace('5,','').str.replace('6,','').str.replace('7,','').str.replace('8,','').str.replace('9,','').str.replace(', ','').astype(float)
+        df_res['min_p_target']=a.str.slice(1,6).str.replace(',','').astype(float)
+
+        # Renombramos los campos calculados/generados
+        df_res=df_res.rename(columns={'target':'Positivos',
+                                      'score':'Totales',
+                                      'percentil':'Bin'
+                                      })
+
+        # Calculamos positivos y totales acumulados
+        df_res['positivos_acum']= np.cumsum(df_res['Positivos'][::-1])[::-1] 
+        df_res['totales_acum']= np.cumsum(df_res['Totales'][::-1])[::-1] 
+
+        # Calculamos la tasa
+        Positivos_Totales=df_res['Positivos'].sum()
+        Totales=df_res['Totales'].sum()
+        Tasa= df_res['Positivos'].sum() / df_res['Totales'].sum()
+
+        # Calculamos lift, porcentaje de captura y porcentaje de conversión
+        df_res['lift_acum']=(df_res['positivos_acum'] / df_res['totales_acum']) / Tasa
+        df_res['porc_captura']=df_res['positivos_acum'] / Positivos_Totales
+        df_res['porc_conversion']=df_res['positivos_acum']/df_res['totales_acum']
+
+        # Seteamos campos complementarios necesarios para el dashboard
+        df_res['fecha']=fecha_score
+        df_res['anio'] = pd.DatetimeIndex(df_res['fecha']).year
+        df_res['mes'] = pd.DatetimeIndex(df_res['fecha']).month
+        df_res['dia'] = pd.DatetimeIndex(df_res['fecha']).day
+        df_res['modelo'] = nombre_modelo
+        df_res['tipo'] = 'BASELINE'
+
+        df_res['bin']=df_res['Bin'].index.tolist()
+        Bin = df_res.pop('Bin')
+
+        # Ordenamos los campos
+        df_res_move=df_res[['anio', 'mes', 'dia', 'bin', 'Positivos', 'Totales', 'min_p_target', 'max_p_target'
+                            , 'positivos_acum', 'totales_acum', 'lift_acum',  'porc_captura', 'porc_conversion','fecha','tipo','modelo' ]]
+
+        # Transformamos a spark
+        df_res_bines =spark.createDataFrame(df_res_move)
+
+        # Insertamos el baseline del PSI, caso contrario, creamos un dataframe de psi vacio.
+        df_psi = df_res[['bin', 'max_p_target', 'Totales', 'fecha','tipo','modelo' ]]
+        df_psi['tipo'] = cant_bines # en el caso del baseline del psi el tipo hace referencia a la cantidad de bines que usa 
+        df_psi = spark.createDataFrame(df_psi)
+
+        ##################################
+        # Indicadores de performance
+        ##################################
+
+        # Nos quedamos con el bin, la maxima probabilidad, totales y positivos por bin
+        df_per=df_res[['bin', 'max_p_target','Totales', 'Positivos']]
+        df_per['total_porc']=df_per['Totales']/Totales
+
+        # Renombramos campos
+        df_per=df_per.rename(columns={'max_p_target':'Score',
+                                    'Totales':'total_nro_accts',
+                                    'Positivos':'total_nro_goods'
+                                })
+        # Calculamos totales
+        df_per['total_nro_bads'] = df_per['total_nro_accts']-df_per['total_nro_goods']
+        Total_Total_nro_goods = df_per['total_nro_goods'].sum()
+        Total_Total_nro_bads = df_per['total_nro_bads'].sum()
+        Total_Total_nro_accts = df_per['total_nro_accts'].sum()
+
+        # Calculamos métricas para determinar el information value, el KS y la curva ROC
+        df_per['good_porc']= df_per['total_nro_goods'] / Total_Total_nro_goods
+        df_per['cum_nro_goods']= np.cumsum(df_per['total_nro_goods'])
+        df_per['cum_porc_goods']= df_per['cum_nro_goods'] / Total_Total_nro_goods
+        df_per['bad_porc'] = df_per['total_nro_bads'] / Total_Total_nro_bads
+        df_per['cum_nro_bads'] = np.cumsum(df_per['total_nro_bads'])
+        df_per['cum_porc_bads'] = df_per['cum_nro_bads'] / Total_Total_nro_bads
+        df_per['intvl_bad_porc'] = df_per['total_nro_bads']/df_per['total_nro_accts']
+
+        df_per['cumulative_bad_rate_deno']=Total_Total_nro_accts - np.cumsum(df_per['total_nro_accts']).shift().fillna(0)
+        df_per['cumulative_bad_rate_num']=Total_Total_nro_bads-np.cumsum(df_per['total_nro_bads']).shift().fillna(0)
+
+        df_per['cumulative_bad_rate'] = df_per['cumulative_bad_rate_num'] / df_per['cumulative_bad_rate_deno']
+        df_per['spread_porc'] = df_per['cum_porc_bads']-df_per['cum_porc_goods'].abs()
+        df_per['actual_odds'] = df_per['total_nro_goods'] / df_per['total_nro_bads']
+
+        # Calculamos el information value y la curva roc en cada uno de los bines
+        df_per['odds_cumulative'] = np.cumsum(df_per['total_nro_bads'][::-1])[::-1] / np.cumsum(df_per['total_nro_goods'][::-1])[::-1] 
+        df_per['informatiovalue']=(df_per['bad_porc'] - df_per['good_porc'])  * (np.log(df_per['bad_porc']/df_per['good_porc']))
+        df_per['pg'] = df_per['cum_porc_bads']
+        df_per['pb'] = df_per['cum_porc_goods']
+
+        df_per['pgi'] = df_per['pg'] - df_per['pg'].shift().fillna(0)
+        df_per['pbi'] = df_per['pb'] - df_per['pb'].shift().fillna(0)
+        df_per['area_rectangulo'] = df_per['pbi'] * df_per['pg'].shift().fillna(0)
+        df_per['area_triangulo'] = df_per['pgi'] * df_per['pbi'] / 2
+        df_per['suma_area'] = df_per['area_rectangulo'] + df_per['area_triangulo']
+
+        # Seteamos campos complementarios necesarios para el dashboard
+        df_per['fecha']=fecha_score
+        df_per['anio'] = pd.DatetimeIndex(df_per['fecha']).year
+        df_per['mes'] = pd.DatetimeIndex(df_per['fecha']).month
+        df_per['dia'] = pd.DatetimeIndex(df_per['fecha']).day
+        df_per['modelo'] = nombre_modelo
+        df_per['tipo'] = 'BASELINE'
 
         # Ordenamos los campos
         df_per=df_per[['anio','mes', 'dia','bin',	'total_nro_accts',	'total_porc',	'total_nro_goods',	'good_porc',	'cum_nro_goods',	'cum_porc_goods',	'total_nro_bads',	'bad_porc',	'cum_nro_bads',	'cum_porc_bads',	'intvl_bad_porc',	'cumulative_bad_rate',	'spread_porc',	'actual_odds',	'odds_cumulative',	'informatiovalue',	'pg',	'pb',	'area_rectangulo',	'area_triangulo',	'suma_area',	'fecha','tipo',	'modelo' ]]
@@ -368,46 +538,13 @@ class funciones:
 
 
         return df_res_bines, df_res_metricas, df_psi
-    
-    @staticmethod
-    def insert_performance(df_res_bines, df_res_metricas, df_psi=0, ambiente='sdb_datamining', tipo = 'PERFORMANCE'):
-        """Función que inserta en hadoop la tabla del baseline de vdi
-        Inputs:
-        -------
-            - df_res_bines: Dataframe en spark que contienen la tabla de performance
-            - df_res_metricas: Dataframe en spark que contienen la tabla con las métricas de performance
-            - df_psi: Dataframe que tiene el baseline del psi (si se ejecuta el BASELINE). Por defecto 0.
-            - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
-            - tipo: Indica si el dataset generado corresponde al periodo de BASELINE o algun otro periodo (performance). Por defecto es 'PERFORMANCE'. 
-        """
-        
-        # Levantamos spark
-        from pyspark.shell import spark
-
-        # Seteamos a nonstrict el partition mode
-        result = spark.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
-        
-        # Insertamos la tabla de performance 
-        df_res_bines.write.mode("overwrite").insertInto(f"{ambiente}.indicadores_bines",overwrite=True)
-        
-        # Insertamos la tabla de métricas de performance
-        df_res_metricas.write.mode("overwrite").insertInto(f"{ambiente}.indicadores_performance",overwrite=True)
-        
-        # Insertarmos la tabla de baseline de PSI solamente si se especifica que estamos trabajando con el periodo de BASELINE
-        if tipo.lower() == 'baseline':
-            df_psi.write.mode("overwrite").insertInto(f"{ambiente}.indicadores_psi_bl",overwrite=True)
-            print(f'Insertamos {df_res_bines.count()} registros en la tabla indicadores_bines, {df_res_metricas.count()} en la tabla indicadores_performance y {df_psi.count()} en la tabla indicadores_psi_bl')
-        else:
-            print(f'Insertamos {df_res_bines.count()} registros en la tabla indicadores_bines, {df_res_metricas.count()} en la tabla indicadores_performance.')
             
-   
-
+            
     @staticmethod
-    def psi(id, score, fecha_foto, abt_modelo, nombre_modelo, ambiente = 'sdb_datamining'):
+    def calcular_psi(id, score, fecha_foto, abt_modelo, nombre_modelo, ambiente = 'sdb_datamining'):
         """
         Función que calcula el psi (Population Stability Index) para los modelos de clasificación.
         E inserta en la tabla de psi el calculo del contribution_to_index por bin (el psi es la suma de contribution_to_index)
-
         Inputs:
         -------
             - id: Nombre del campo que identifica el 'id' del modelo por ejemplo el campo 'linea' o el campo 'id_suscripcion'.
@@ -416,11 +553,9 @@ class funciones:
             - abt_modelo: Nombre de la tabla donde se encuentra el id y el score del modelo a monitorear la estabilidad.
             - nombre_modelo: Nombre del modelo a monitorear la estabilidad.
             - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto sdb_datamining
-
         Outputs:
         -------
             - df_ind_PSI: Dataframe con el calculo de contribution_to_index por bin.
-
         """
         # Importamos librerías
         import pandas as pd
@@ -515,33 +650,12 @@ class funciones:
 
 
         return df_ind_PSI_move
-
+    
     @staticmethod
-    def insert_psi(df_psi, ambiente='sdb_datamining'):
-        """Función que inserta en hadoop la tabla del baseline de vdi
-        Inputs:
-        -------
-            - df_psi: Dataframe que tiene el psi del modelo
-            - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
-        """
-        # Levantamos spark
-        from pyspark.shell import spark
-
-        # Seteamos a nonstrict el partition mode
-        result = spark.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
-
-        # Insertamos la tabla de psi 
-        df_psi.write.mode("overwrite").insertInto(f"{ambiente}.indicadores_psi",overwrite=True)
-
-        print(f'Insertamos {df_psi.count()} registros en la tabla indicadores_psi.')
-        
-        
-    @staticmethod
-    def vdi_cualitativas(id, score, variables,fecha_foto, abt_modelo, nombre_modelo, ambiente='sdb_datamining' ):
+    def calcular_vdi_cualitativas(id, score, variables,fecha_foto, abt_modelo, nombre_modelo, ambiente='sdb_datamining' ):
         """
         Función que calcula el vdi para las variables cualitativas.
         Nota: Previamente hay que definir un baseline de las variables cualitativas.
-
         Inputs:
         -------
             - id: Nombre del campo que identifica el 'id' del modelo por ejemplo el campo 'linea' o el campo 'id_suscripcion'.
@@ -551,11 +665,9 @@ class funciones:
             - abt_modelo: Nombre de la tabla donde se encuentra el id y el score del modelo a monitorear la estabilidad.
             - nombre_modelo: Nombre del modelo a monitorear la estabilidad.
             - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto sdb_datamining
-
         Outputs:
         -------
             - df_vdi_cuali_move: dataframe de spark con el calculo del vdi de cada una de las variables cualitativas.
-
         """
         # Importamos librerias 
         import pandas as pd
@@ -684,13 +796,14 @@ class funciones:
         df_vdi_cuali_move =spark.createDataFrame(df_vdi_cualii)
 
         return df_vdi_cuali_move
-    
+            
+   
+
     @staticmethod
-    def vdi_cuantitativas(id, score, variables,fecha_foto, abt_modelo, nombre_modelo, ambiente='sdb_datamining'):
+    def calcular_vdi_cuantitativas(id, score, variables,fecha_foto, abt_modelo, nombre_modelo, ambiente='sdb_datamining'):
         """
         Función que calcula el vdi para las variables cuantitativas.
         Nota: Previamente hay que definir un baseline de las variables cuantitativas.
-
         Inputs:
         -------
             - id: Nombre del campo que identifica el 'id' del modelo por ejemplo el campo 'linea' o el campo 'id_suscripcion'.
@@ -700,7 +813,6 @@ class funciones:
             - abt_modelo: Nombre de la tabla donde se encuentra el id y el score del modelo a monitorear la estabilidad.
             - nombre_modelo: Nombre del modelo a monitorear la estabilidad.
             - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto sdb_datamining 
-
         Outputs:
         --------
             - df_vdi_cuanti_move: dataframe en spark con el calculo del vdi de cada una de las variables cuantitativas.
@@ -879,23 +991,179 @@ class funciones:
         df_vdi_cuanti_move =spark.createDataFrame(df_vdi_cuantii)
 
         return df_vdi_cuanti_move
-    
+
     @staticmethod
-    def insert_vdi(df_vdi, ambiente='sdb_datamining'):
-        """Función que inserta en hadoop la tabla del vdi (aplica para cualitativas y cuantitativas)
+    def insertar_vdi_cuantitativas_baseline(df_vdi_cuanti_bl, ambiente='sdb_datamining'):
+        """Función que inserta en hadoop la tabla del baseline de vdi de las variables cuantitativas
         Inputs:
         -------
-            - df_vdi: Dataframe que tiene el el vdi de las variables cualitativas o cuantitativas del modelo.
+            - df_vdi_cuanti_bl: Dataframe de spark con el baseline de las variables cuantitativas a insertar en hadoop.
             - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
         """
-        # Levantamos spark
-        from pyspark.shell import spark
+        # Levantamos la sesión de spark
+        from pyspark.sql import SparkSession, SQLContext
+
+        spark = SparkSession.builder.appName("Monitoring Functions").getOrCreate()
+        sc=spark.sparkContext
+        sqlContext = SQLContext(sc)
+
 
         # Seteamos a nonstrict el partition mode
-        result = spark.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
+        result = sqlContext.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
+
+        # Insertamos en la tabla de baseline
+        df_vdi_cuanti_bl.write.mode("overwrite").insertInto(f"{ambiente}.indicadores_vdi_cuanti_bl",overwrite=True)   
+        print(f'Insertó {df_vdi_cuanti_bl.count()} registros en la tabla indicadores_vdi_cuanti_bl')
+        
+        
+    @staticmethod
+    def insertar_vdi_cualitativas_baseline(df_vdi_cuali_bl, ambiente='sdb_datamining'):
+        """Función que inserta en hadoop la tabla del baseline de vdi de las variables cualitativas
+        Inputs:
+        -------
+            - df_vdi_cuali_bl: Dataframe de spark con el baseline de las variables cualitativas a insertar en hadoop.
+            - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
+        """
+        # Levantamos la sesión de spark
+        from pyspark.sql import SparkSession, SQLContext
+
+        spark = SparkSession.builder.appName("Monitoring Functions").getOrCreate()
+        sc=spark.sparkContext
+        sqlContext = SQLContext(sc)
+
+
+        # Seteamos a nonstrict el partition mode
+        result = sqlContext.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
+
+        # Insertamos en la tabla de baseline
+        df_vdi_cuali_bl.write.mode("overwrite").insertInto(f"{ambiente}.indicadores_vdi_cuali_bl",overwrite=True)   
+        print(f'Insertó {df_vdi_cuali_bl.count()} registros en la tabla indicadores_vdi_cuali_bl')
+    
+    @staticmethod
+    def insertar_performance_baseline(df_res_bines, df_res_metricas, df_psi, ambiente='sdb_datamining'):
+        """Función que inserta en hadoop la tabla de performance de baseline, las métricas de performance de baseline y el psi de baseline de un modelo binario 
+        Inputs:
+        -------
+            - df_res_bines: Dataframe en spark que contienen la tabla de performance
+            - df_res_metricas: Dataframe en spark que contienen la tabla con las métricas de performance
+            - df_psi: Dataframe que tiene el baseline del psi.
+            - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
+        """
+        # Levantamos la sesión de spark
+        from pyspark.sql import SparkSession, SQLContext
+
+        spark = SparkSession.builder.appName("Monitoring Functions").getOrCreate()
+        sc=spark.sparkContext
+        sqlContext = SQLContext(sc)
+
+        # Seteamos a nonstrict el partition mode
+        result = sqlContext.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
+
+        # Insertamos la tabla de performance 
+        df_res_bines.write.mode("overwrite").insertInto(f"{ambiente}.indicadores_bines",overwrite=True)
+
+        # Insertamos la tabla de métricas de performance
+        df_res_metricas.write.mode("overwrite").insertInto(f"{ambiente}.indicadores_performance ",overwrite=True)
+
+        # Insertarmos la tabla de baseline de PSI solamente si se especifica que estamos trabajando con el periodo de BASELINE
+        df_psi.write.mode("overwrite").insertInto(f"{ambiente}.indicadores_psi_bl",overwrite=True)
+        print(f'Insertamos {df_res_bines.count()} registros en la tabla indicadores_bines, {df_res_metricas.count()} en la tabla indicadores_performance y {df_psi.count()} en la tabla indicadores_psi_bl')
+        
+    @staticmethod
+    def insertar_performance_actual(df_res_bines, df_res_metricas, ambiente='sdb_datamining'):
+         """Función que inserta en hadoop la tabla de performance y las métricas de performance de un modelo 
+        Inputs:
+        -------
+            - df_res_bines: Dataframe en spark que contienen la tabla de performance
+            - df_res_metricas: Dataframe en spark que contienen la tabla con las métricas de performance
+            - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
+        """
+        # Levantamos la sesión de spark
+        from pyspark.sql import SparkSession, SQLContext
+
+        spark = SparkSession.builder.appName("Monitoring Functions").getOrCreate()
+        sc=spark.sparkContext
+        sqlContext = SQLContext(sc)
+
+        # Seteamos a nonstrict el partition mode
+        result = sqlContext.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
+
+        # Insertamos la tabla de performance 
+        df_res_bines.write.mode("overwrite").insertInto(f"{ambiente}.indicadores_bines",overwrite=True)
+
+        # Insertamos la tabla de métricas de performance
+        df_res_metricas.write.mode("overwrite").insertInto(f"{ambiente}.indicadores_performance ",overwrite=True)
+
+        print(f'Insertamos {df_res_bines.count()} registros en la tabla indicadores_bines, {df_res_metricas.count()} en la tabla indicadores_performance.')
+        
+    @staticmethod
+    def insertar_psi(df_psi, ambiente='sdb_datamining'):
+        """Función que inserta en hadoop la tabla de psi
+        Inputs:
+        -------
+            - df_psi: Dataframe que tiene el psi del modelo
+            - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
+        """
+        # Levantamos la sesión de spark
+        from pyspark.sql import SparkSession, SQLContext
+
+        spark = SparkSession.builder.appName("Monitoring Functions").getOrCreate()
+        sc=spark.sparkContext
+        sqlContext = SQLContext(sc)
+
+        # Seteamos a nonstrict el partition mode
+        result = sqlContext.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
 
         # Insertamos la tabla de psi 
+        df_psi.write.mode("overwrite").insertInto(f"{ambiente}.indicadores_psi",overwrite=True)
+
+        print(f'Insertamos {df_psi.count()} registros en la tabla indicadores_psi.')
+        
+    @staticmethod
+    def insertar_vdi_cuantitativas(df_vdi_cuanti, ambiente='sdb_datamining'):
+        """Función que inserta en hadoop la tabla de vdi de las variables cuantitativas.
+        Inputs:
+        -------
+            - df_vdi_cuanti: Dataframe que tiene el el vdi de las variables cuantitativas del modelo.
+            - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
+        """
+        # Levantamos la sesión de spark
+        from pyspark.sql import SparkSession, SQLContext
+
+        spark = SparkSession.builder.appName("Monitoring Functions").getOrCreate()
+        sc=spark.sparkContext
+        sqlContext = SQLContext(sc)
+
+        # Seteamos a nonstrict el partition mode
+        result = sqlContext.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
+
+        # Insertamos la tabla de psi 
+        df_vdi_cuanti.write.mode("overwrite").insertInto(f"{ambiente}.indicadores_vdi",overwrite=True)
+
+
+        print(f'Insertamos {df_vdi_cuanti.count()} registros en la tabla indicadores_vdi.')
+        
+    @staticmethod
+    def insertar_vdi(df_vdi, ambiente='sdb_datamining'):
+        """Función que inserta en hadoop la tabla de vdi de las variables cualitativas/cuantitativas.
+        Dado que la estructura es la misma no es necesario tener dos funciones.
+        Inputs:
+        -------
+            - df_vdi: Dataframe que tiene el el vdi de las variables cualitativas del modelo.
+            - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
+        """
+        # Levantamos la sesión de spark
+        from pyspark.sql import SparkSession, SQLContext
+
+        spark = SparkSession.builder.appName("Monitoring Functions").getOrCreate()
+        sc=spark.sparkContext
+        sqlContext = SQLContext(sc)
+
+        # Seteamos a nonstrict el partition mode
+        result = sqlContext.sql("""set hive.exec.dynamic.partition.mode=nonstrict""")
+
+        # Insertamos la tabla de vdi 
         df_vdi.write.mode("overwrite").insertInto(f"{ambiente}.indicadores_vdi",overwrite=True)
 
 
-        print(f'Insertamos {df_vdi.count()} registros en la tabla indicadores_vdi.')
+        print(f'Insertamos {df_vdi.count()} registros en la tabla indicadores_vdi.')        

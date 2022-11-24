@@ -112,94 +112,96 @@ class funciones:
     @staticmethod
     def calcular_vdi_cualitativas_baseline(id, fecha_foto, variables, abt_modelo, nombre_modelo, ambiente='sdb_datamining'):
         """Función que calcula el baseline de la distribución de las variables cualitativas.
-	
-		Inputs:
-		-------
-			- id: Nombre del campo que identifica el 'id' del modelo por ejemplo el campo 'linea' o el campo 'id_suscripcion'.
-			- fecha_foto: fecha en la que se requiere ver la distribución de las variables yyyymmdd.
-			- variables: lista de variables a monitorear. No más de 20 variables.
-			- abt_modelo: Nombre de la tabla donde se encuentra el id y el score del modelo.
-			- nombre_modelo: Nombre del modelo a monitorear el performance.
-			- ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). 
-						Por defecto 'sdb_datamining'.
-		Outputs:
-		-------
-			- df_vdi_cuali_bl: Dataframe con la distribución baseline de las variables
-		"""
-		import pandas as pd
-		import numpy as np
-		from datetime import datetime
-		from pyspark.shell import spark
-		# Quitamos los mensajes de warning
-		import warnings
-		warnings.filterwarnings('ignore')
-	
-		# Validamos que se pasen como parámetro solamente 20 variables
-		assert len(variables)<=20, 'Debe insertar 20 variables como máximo'
-	
-		# Genemos el periodo de score
-		fecha_foto_dt = datetime.strptime(fecha_foto, '%Y%m%d')
-		periodo = int(fecha_foto_dt.strftime('%Y%m'))
-	
-		# Creamos el query que levanta las n variables especificadas en 'variables' y lo pasamos a pandas
-	
-		query = f"""select {id}
-				"""
-		for i in range(0, len(variables)):
-			query += f"""
-			,{variables[i]}"""
-			# Guardamos en un string las variables para levantar del baseline
-			if i ==0:
-				lista_variables = f"""'{variables[i]}'"""
-			else:
-				lista_variables += f""",'{variables[i]}'"""
-	
-		query += f"""
-			from {ambiente}.{abt_modelo} 
-			where periodo={periodo}"""
-	
-		df_baseline = spark.sql(query)
-		df_baseline=df_baseline.toPandas()
-	
-		# Generamos el baseline
-		## Definimos dataframe que acumule los baseline de las variables
-		df_vdi_cuali_bl=pd.DataFrame()
-	
-		for variable in variables:
-	
-			# Calculamos los totales por cada categoría
-			sub = df_baseline[[variable]]
-			sub=sub.sort_values(by =[variable])
-			tmp_var = sub.groupby([variable])[[variable]].count().rename(columns={variable:"totales"})
-	
-			# Añadimos el nombre de la variable por la que estamos iterando
-			tmp_var['var']=variable
-			tmp_var['bin']= tmp_var.index.tolist()
-			tmp_var['bin'] = tmp_var['bin'].astype(str)
-	
-			# Seleccionamos los campos
-			var = tmp_var[['bin','var', 'totales']]
-	
-			# Appendemos los baseline de cada variable
-			df_vdi_cuali_bl=df_vdi_cuali_bl.append(var)
-	
-		# Seteamos campos complementarios necesarios para la tabla
-		df_vdi_cuali_bl['fecha_foto']=fecha_foto
-		df_vdi_cuali_bl['modelo']= nombre_modelo
-		df_vdi_cuali_bl['categoria']=df_vdi_cuali_bl['bin']
-		df_vdi_cuali_bl['bin']=0
-		df_vdi_cuali_bl=df_vdi_cuali_bl[['bin','var','totales','categoria', 'fecha_foto', 'modelo']]
-	
-		# Transformamos a spark
-		df_vdi_cuali_bl =spark.createDataFrame(df_vdi_cuali_bl)
-	
-		return df_vdi_cuali_bl
-    
+        
+        Inputs:
+        -------
+            - id: Nombre del campo que identifica el 'id' del modelo por ejemplo el campo 'linea' o el campo 'id_suscripcion'.
+            - fecha_foto: fecha en la que se requiere ver la distribución de las variables yyyymmdd.
+            - variables: lista de variables a monitorear. No más de 20 variables.
+            - abt_modelo: Nombre de la tabla donde se encuentra el id y el score del modelo.
+            - nombre_modelo: Nombre del modelo a monitorear el performance.
+            - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). 
+                        Por defecto 'sdb_datamining'.
+        Outputs:
+        -------
+            - df_vdi_cuali_bl: Dataframe con la distribución baseline de las variables
+        """
+        import pandas as pd
+        import numpy as np
+        from datetime import datetime
+        from pyspark.shell import spark
+        # Quitamos los mensajes de warning
+        import warnings
+        warnings.filterwarnings('ignore')
+        
+        # Validamos que se pasen como parámetro solamente 20 variables
+        assert len(variables)<=20, 'Debe insertar 20 variables como máximo'
+        
+        # Genemos el periodo de score
+        fecha_foto_dt = datetime.strptime(fecha_foto, '%Y%m%d')
+        periodo = int(fecha_foto_dt.strftime('%Y%m'))
+        
+        # Creamos el query que levanta las n variables especificadas en 'variables' y lo pasamos a pandas
+        
+        query = f"""select {id}
+                """
+        for i in range(0, len(variables)):
+            query += f"""
+            ,{variables[i]}"""
+            # Guardamos en un string las variables para levantar del baseline
+            if i ==0:
+                lista_variables = f"""'{variables[i]}'"""
+            else:
+                lista_variables += f""",'{variables[i]}'"""
+        
+        query += f"""
+            from {ambiente}.{abt_modelo} 
+            where periodo={periodo}"""
+        
+        df_baseline = spark.sql(query)
+        df_baseline=df_baseline.toPandas()
+        
+        # Generamos el baseline
+        ## Definimos dataframe que acumule los baseline de las variables
+        df_vdi_cuali_bl=pd.DataFrame()
+        
+        for variable in variables:
+        
+            # Calculamos los totales por cada categoría
+            sub = df_baseline[[variable]]
+            sub=sub.sort_values(by =[variable])
+            tmp_var = sub.groupby([variable])[[variable]].count().rename(columns={variable:"totales"})
+        
+            # Añadimos el nombre de la variable por la que estamos iterando
+            tmp_var['var']=variable
+            tmp_var['bin']= tmp_var.index.tolist()
+            tmp_var['bin'] = tmp_var['bin'].astype(str)
+        
+            # Seleccionamos los campos
+            var = tmp_var[['bin','var', 'totales']]
+        
+            # Appendemos los baseline de cada variable
+            df_vdi_cuali_bl=df_vdi_cuali_bl.append(var)
+        
+        # Seteamos campos complementarios necesarios para la tabla
+        df_vdi_cuali_bl['fecha_foto']=fecha_foto
+        df_vdi_cuali_bl['modelo']= nombre_modelo
+        df_vdi_cuali_bl['categoria']=df_vdi_cuali_bl['bin']
+        df_vdi_cuali_bl['bin']=0
+        df_vdi_cuali_bl=df_vdi_cuali_bl[['bin','var','totales','categoria', 'fecha_foto', 'modelo']]
+        
+        # Transformamos a spark
+        df_vdi_cuali_bl =spark.createDataFrame(df_vdi_cuali_bl)
+        
+        return df_vdi_cuali_bl
+        
     @staticmethod
     def calcular_performance_actual(abt_modelo, nombre_modelo, query, fecha_score, cant_bines = 20, ambiente='sdb_datamining'):
         """
-        Función que calcula las métricas de performance (para modelos de clasificación binaria) tales como: Information Value, Kolmogorov Smirnov (KS), Gini, AUC, para un periodo en particular, considerando un baseline.
-        También, crea la tabla de performance (para modelos de clasificación binaria) para un periodo en particular, considerando un baseline, en donde podemos apreciar métricas tales como Lift Acumulado, % Captura, % Conversión.
+        Función que calcula las métricas de performance (para modelos de clasificación binaria) tales como: 
+        Information Value, Kolmogorov Smirnov (KS), Gini, AUC, para un periodo en particular, considerando un baseline.
+        También, crea la tabla de performance (para modelos de clasificación binaria) para un periodo en particular, 
+        considerando un baseline, en donde podemos apreciar métricas tales como Lift Acumulado, % Captura, % Conversión.
         Importante: Enviamos como parámetro el query que joinea el target con el score.
         Inputs:
         -------
@@ -208,7 +210,8 @@ class funciones:
             - query: String que contiene el join entre el target y el score del modelo. (Respetar los 'as' en los querys)
             - fecha_score: Fecha en la que se requiere verificar el performance del modelo. Está en formato yyyymmdd.
             - cant_bines: Cantidad de bines que se creará con la distribución del score. Aplica solo para el baseline. Por defecto 20.
-            - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
+            - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). 
+            Por defecto 'sdb_datamining'.
 
         Outputs:
         --------
@@ -269,7 +272,7 @@ class funciones:
 
         # Capturamos la probabilidad máxima y mínima por grupo
         a=df_res['percentil'].astype(str)
-        df_res['max_p_target']=a.str.slice(start=-7).str.replace(']','').str.replace('1,','').str.replace('2,','').str.replace('3,','').str.replace('4,','').str.replace('5,','').str.replace('6,','').str.replace('7,','').str.replace('8,','').str.replace('9,','').str.replace(', ','').astype(float)
+                df_res['max_p_target']=a.str.slice(start=-7).str.replace(']','').str.replace('1,','').str.replace('2,','').str.replace('3,','').str.replace('4,','').str.replace('5,','').str.replace('6,','').str.replace('7,','').str.replace('8,','').str.replace('9,','').str.replace(', ','').astype(float)
         df_res['min_p_target']=a.str.slice(1,6).str.replace(',','').astype(float)
 
         # Renombramos los campos calculados/generados
@@ -370,8 +373,7 @@ class funciones:
 
         # Transformamos a spark
         df_res_metricas =spark.createDataFrame(df_per)
-
-
+        
         return df_res_bines, df_res_metricas
     
     

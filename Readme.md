@@ -3,6 +3,24 @@
 Este repositorio contiene el código para desarrollar las funciones de monitoreo tanto del _performance_ como de la estabilidad de los modelos de clasificación **binaria**. 
 A su vez, tiene funciones que permiten insertar la salida de las funciones anteriormente mencionadas (_dataframes_ de _pyspark_) en las tablas de [monitoreo de modelos](https://docucio.telecom.com.ar/pages/viewpage.action?pageId=47908003).
 
+LA siguiente tabla resumente las funciones de monitoreo:
+
+|**Nombre anterior** | **Nombre actual**|**Descripción**|**Tipo**|
+|------|------|------|--------|
+|vdi_bl| calcular_vdi_cuantitativas_baseline| Calcula el **_baseline_** de las variables **cuantitativas** para un modelo y fecha en particular|Cálculo|
+|vdi_bl| calcular_vdi_cualitativas_baseline| Calcula el **_baseline_** de las variables **cualitativas** para un modelo y fecha en particular |Cálculo|
+|performance| calcular_performance_baseline| Calcula las métricas de performance **_baseline_** para un modelo y fecha en particular|Cálculo|
+|performance| calcular_performance_actual| Calcula las métricas de **performance** para un modelo y fecha en particular|Cálculo|
+|psi|calcular_psi|Calcula el **psi** para un modelo y fecha en particular|Cálculo|
+|vdi_cualitativas|calcular_vdi_cualitativas|Calcula el vdi de las variables **cualitativas** para una fecha y modelo en particular|Cálculo|
+|vdi_cuantitativas|calcular_vdi_cuantitativas|Calcula el vdi de las variables **cuantitativas** para una fecha y modelo en particular|Cálculo|
+|insert_vdi|insertar_vdi_cuantitativas_baseline| Inserta en **_hadoop_** el dataframe de _spark_ que tiene el baseline de las variables cuantitativas| Inserción|
+|insert_vdi|insertar_vdi_cualitativas_baseline| Inserta en **_hadoop_** el dataframe de _spark_ que tiene el baseline de las variables cualitativas | Inserción|
+|insert_performance|insertar_performance_baseline| Inserta en **_hadoop_** el dataframe de _spark_ que tiene el performance baseline de un modelo en particular| Inserción|
+|insert_performance|insertar_performance_actual| Inserta en **_hadoop_** el dataframe de _spark_ que tiene el performance para un modelo y fecha en particular| Inserción|
+|insert_psi|insertar_psi| Inserta en **_hadoop_** el dataframe _spark_ que tiene el psi para un modelo y fecha en particular| Inserción|
+|insert_vdi|insertar_vdi| Inserta en **_hadoop_** el dataframe de _spark_ que tiene el vdi de las variables cuantitativas o cualitativas| Inserción|
+
 Las funciones son las siguientes:
 
 ## calcular_vdi_cuantitativas_baseline

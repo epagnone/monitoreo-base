@@ -8,18 +8,7 @@ La siguiente tabla muestra una descripción general de las funciones:
 |------|------|------|--------|
 |**Nombre anterior** | **Nombre actual**|**Descripción**|**Tipo**|
 |vdi_bl| calcular_vdi_cuantitativas_baseline| Calcula el **_baseline_** de las variables **cuantitativas** para un modelo y fecha en particular|Cálculo|
-|vdi_bl| calcular_vdi_cualitativas_baseline| Calcula el **_baseline_** de las variables **cualitativas** para un modelo y fecha en particular |Cálculo|
-|performance| calcular_performance_baseline| Calcula las métricas de performance **_baseline_** para un modelo y fecha en particular|Cálculo|
-|performance| calcular_performance_actual| Calcula las métricas de **performance** para un modelo y fecha en particular|Cálculo|
-|psi|calcular_psi|Calcula el **psi** para un modelo y fecha en particular|Cálculo|
-|vdi_cualitativas|calcular_vdi_cualitativas|Calcula el vdi de las variables **cualitativas** para una fecha y modelo en particular|Cálculo|
-|vdi_cuantitativas|calcular_vdi_cuantitativas|Calcula el vdi de las variables **cuantitativas** para una fecha y modelo en particular|Cálculo|
-|insert_vdi|insertar_vdi_cuantitativas_baseline| Inserta en **_hadoop_** el dataframe de _spark_ que tiene el baseline de las variables cuantitativas| Inserción|
-|insert_vdi|insertar_vdi_cualitativas_baseline| Inserta en **_hadoop_** el dataframe de _spark_ que tiene el baseline de las variables cualitativas | Inserción|
-|insert_performance|insertar_performance_baseline| Inserta en **_hadoop_** el dataframe de _spark_ que tiene el performance baseline de un modelo en particular| Inserción|
-|insert_performance|insertar_performance_actual| Inserta en **_hadoop_** el dataframe de _spark_ que tiene el performance para un modelo y fecha en particular| Inserción|
-|insert_psi|insertar_psi| Inserta en **_hadoop_** el dataframe _spark_ que tiene el psi para un modelo y fecha en particular| Inserción|
-|insert_vdi|insertar_vdi| Inserta en **_hadoop_** el dataframe de _spark_ que tiene el vdi de las variables cuantitativas o cualitativas| Inserción|
+
 
 Las funciones son las siguientes:
 

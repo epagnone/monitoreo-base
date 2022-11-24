@@ -3,7 +3,7 @@
 Este repositorio contiene el código para desarrollar las funciones de monitoreo tanto del _performance_ como de la estabilidad de los modelos de clasificación **binaria**. 
 A su vez, tiene funciones que permiten insertar la salida de las funciones anteriormente mencionadas (_dataframes_ de _pyspark_) en las tablas de [monitoreo de modelos](https://docucio.telecom.com.ar/pages/viewpage.action?pageId=47908003).
 
-LA siguiente tabla resumente las funciones de monitoreo:
+La siguiente tabla resumen las funciones de monitoreo:
 
 |**Nombre anterior** | **Nombre actual**|**Descripción**|**Tipo**|
 |------|------|------|--------|
@@ -21,6 +21,7 @@ LA siguiente tabla resumente las funciones de monitoreo:
 |insert_psi|insertar_psi| Inserta en **_hadoop_** el dataframe _spark_ que tiene el psi para un modelo y fecha en particular| Inserción|
 |insert_vdi|insertar_vdi| Inserta en **_hadoop_** el dataframe de _spark_ que tiene el vdi de las variables cuantitativas o cualitativas| Inserción|
 
+Para ver ejemplos de ejecución revisar la [notebook](http://sr-hadzepp-xp02.corp.cablevision.com.ar:8081/#/notebook/2HKREWW78)
 Las funciones son las siguientes:
 
 ## calcular_vdi_cuantitativas_baseline
@@ -184,3 +185,4 @@ Inserta en hadoop el _dataframe_ de _spark_ que tiene el vdi de las variables cu
     -------
         - df_vdi: Dataframe que tiene el el vdi de las variables cualitativas del modelo.
         - ambiente: Ambiente en el que se va a guardar el indicador. ('sdb_datamining' es desarrollo / 'data_lake_analytics' es producción). Por defecto 'sdb_datamining'.
+        

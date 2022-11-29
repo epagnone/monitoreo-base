@@ -102,35 +102,35 @@ class Funciones:
     #     print(self.lista_df[df])
     
     
-    def baseline(self, query, fecha_score, cant_bines = 20):
-        return self.__performance(query, fecha_score, cant_bines, tipo="BASELINE")
+    # def baseline(self, query, fecha_score, cant_bines = 20):
+    #     return self.__performance(query, fecha_score, cant_bines, tipo="BASELINE")
     
         
-    def insert_performance(self, df_res_bines, df_res_metricas, df_psi=0):
-        return self.__insert_performance(self, df_res_bines, df_res_metricas, df_psi,  tipo = 'PERFORMANCE')
+    # def insert_performance(self, df_res_bines, df_res_metricas, df_psi=0):
+    #     return self.__insert_performance(self, df_res_bines, df_res_metricas, df_psi,  tipo = 'PERFORMANCE')
     
-    def insert_baseline(self, df_res_bines, df_res_metricas, df_psi=0,):
-        return self.__insert_performance(self, df_res_bines, df_res_metricas, df_psi,   tipo = 'BASELINE')
+    # def insert_baseline(self, df_res_bines, df_res_metricas, df_psi=0,):
+    #     return self.__insert_performance(self, df_res_bines, df_res_metricas, df_psi,   tipo = 'BASELINE')
     
     
-    #Combos    
-    def preformanceAndInsert(self, query, fecha_score, cant_bines = 20):
-        self.insert_performance(self.performance(query, fecha_score, cant_bines, tipo='PERFORMANCE'), tipo='PERFORMANCE')
+    # #Combos    
+    # def preformanceAndInsert(self, query, fecha_score, cant_bines = 20):
+    #     self.insert_performance(self.performance(query, fecha_score, cant_bines, tipo='PERFORMANCE'), tipo='PERFORMANCE')
         
-    def baselineAndInsert(self, query, fecha_score, cant_bines = 20):
-        self.insert_baseline(self.baseline(query, fecha_score, cant_bines, tipo='BASELINE'), tipo='BASELINE')
+    # def baselineAndInsert(self, query, fecha_score, cant_bines = 20):
+    #     self.insert_baseline(self.baseline(query, fecha_score, cant_bines, tipo='BASELINE'), tipo='BASELINE')
 
 
-    def __check_fecha_foto(fecha_foto, self)->str:
-        if fecha_foto==None and self.fecha_foto==None:
-            print("fecha_foto no esta definida ni pasada por parametro")
-            raise
-        else:
-            return fecha_foto if fecha_foto != None else self.fecha_foto
+    # def __check_fecha_foto(fecha_foto, self)->str:
+    #     if fecha_foto==None and self.fecha_foto==None:
+    #         print("fecha_foto no esta definida ni pasada por parametro")
+    #         raise
+    #     else:
+    #         return fecha_foto if fecha_foto != None else self.fecha_foto
         
     
     
-    def calcular_vdi_cuantitativas_baseline(self, fecha_foto, variables):
+    def calcular_vdi_cuantitativas_baseline(self, fecha_foto, variables, ambiente='sdb_datamining'):
         """Función que calcula el baseline de la distribución de las variables cuantitativas.
 	
         Inputs:
@@ -171,7 +171,7 @@ class Funciones:
                 lista_variables += f""",'{variables[i]}'"""
 	
         query += f"""
-            from {self.ambiente}.{self.abt_modelo} 
+            from {ambiente}.{self.abt_modelo} 
             where periodo={periodo}"""
 	
         df_baseline = spark.sql(query)

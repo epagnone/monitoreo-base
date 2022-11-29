@@ -62,7 +62,7 @@ class Funciones:
     instancias=[]
     
     
-    def __init__(self, id, abt_modelo, nombre_modelo, fecha_foto=None, ambiente='sdb_datamining') -> None:
+    def __init__(self, id, abt_modelo, nombre_modelo, score=None, fecha_foto=None, ambiente='sdb_datamining') -> None:
         
         #Asserts....
               
@@ -72,6 +72,7 @@ class Funciones:
         self.ambiente='sdb_datamining'
         #Todo: lista de df... desarrollar
         self.lista_df=[]
+        self.score=score
         
         #Raestro de instancias... ver si funciona en zeppelin
         Funciones.instancias.append(self)
@@ -640,7 +641,7 @@ class Funciones:
         return df_res_bines, df_res_metricas, df_psi
 
 
-    def calcular_psi(self, score, fecha_foto, ambiente = 'sdb_datamining'):
+    def calcular_psi(self, fecha_foto, ambiente = 'sdb_datamining'):
         """
         Función que calcula el psi (Population Stability Index) para los modelos de clasificación.
         E inserta en la tabla de psi el calculo del contribution_to_index por bin (el psi es la suma de contribution_to_index)
@@ -664,7 +665,7 @@ class Funciones:
 
         # Cargamos el periodo actual y lo pasamos a pandas
         query =f"""
-        select {id} as id ,{score} as score from {ambiente}.{self.abt_modelo} where periodo={periodo}
+        select {id} as id ,{self.score} as score from {ambiente}.{self.abt_modelo} where periodo={periodo}
         """
         df_bin_ = spark.sql(query)
         df_bin = df_bin_.toPandas()
@@ -746,7 +747,7 @@ class Funciones:
 
         return df_ind_PSI_move
     
-    def calcular_vdi_cualitativas(id, score, variables,fecha_foto, ambiente='sdb_datamining' ):
+    def calcular_vdi_cualitativas(self, variables,fecha_foto, ambiente='sdb_datamining' ):
         """
         Función que calcula el vdi para las variables cualitativas.
         Nota: Previamente hay que definir un baseline de las variables cualitativas.
@@ -786,7 +787,7 @@ class Funciones:
             else:
                 lista_variables += f""",'{variables[i]}'"""
         query += f"""
-            ,{score} as score
+            ,{self.score} as score
             from {ambiente}.{self.abt_modelo} 
             where periodo={periodo}"""
 
@@ -885,7 +886,7 @@ class Funciones:
 
         return df_vdi_cuali_move
 
-    def calcular_vdi_cuantitativas(self, score, variables,fecha_foto, ambiente='sdb_datamining'):
+    def calcular_vdi_cuantitativas(self, variables,fecha_foto, ambiente='sdb_datamining'):
         """
         Función que calcula el vdi para las variables cuantitativas.
         Nota: Previamente hay que definir un baseline de las variables cuantitativas.
@@ -927,7 +928,7 @@ class Funciones:
                 lista_variables += f""",'{variables[i]}'"""
 
         query += f"""
-            ,{score} as score
+            ,{self.score} as score
             from {ambiente}.{self.abt_modelo} 
             where periodo={periodo}"""
 
@@ -937,7 +938,7 @@ class Funciones:
         # Levantamos el último baseline de las variables cualitativas
         query=f"""
         select * from {ambiente}.indicadores_vdi_cuanti_bl 
-        where modelo = '{nombre_modelo}'
+        where modelo = '{self.nombre_modelo}'
         and fecha = (select max(fecha) from {ambiente}.indicadores_vdi_cuanti_bl where  modelo='{self.nombre_modelo}') 
         and var in ({lista_variables})
         """
